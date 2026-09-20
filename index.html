@@ -157,10 +157,10 @@ next.onclick=()=>{if(currentView<Math.ceil(totalPages/12)-1){currentView++;rende
 document.querySelectorAll("[data-pages]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".page-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");customArea.style.display="none";currentView=0;resizeProgress(b.dataset.pages)});
 customButton.onclick=()=>{document.querySelectorAll(".page-button").forEach(x=>x.classList.remove("active"));customButton.classList.add("active");customArea.style.display="block"};
 customPages.onchange=e=>{currentView=0;resizeProgress(e.target.value)};
-title.addEventListener("input",save);
-exportBackup.onclick=exportBackup;
-importBackup.onclick=()=>backupFile.click();
-backupFile.onchange=async e=>{
+document.getElementById("title").addEventListener("input",save);
+document.getElementById("exportBackup").addEventListener("click",exportBackup);
+document.getElementById("importBackup").addEventListener("click",()=>document.getElementById("backupFile").click());
+document.getElementById("backupFile").addEventListener("change",async e=>{
 const file=e.target.files?.[0];
 if(!file)return;
 try{
@@ -171,7 +171,7 @@ showBackupStatus(`✅ バックアップを復元しました。<br><b>${file.na
 showBackupStatus("❌ このバックアップファイルは読み込めませんでした。");
 }
 e.target.value="";
-};
+});
 load();render();
 </script>
 </body>

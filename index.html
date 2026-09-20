@@ -67,6 +67,60 @@ button{font:inherit;color:inherit}
 .sticky-actions{display:grid;grid-template-columns:1fr 1.7fr;gap:9px;margin-top:2px}
 .sticky-delete{height:44px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#777;font-weight:700}
 .sticky-delete:active{background:#f3f3f3}
+
+/* Smooth swipe/page transition */
+#pages{
+  will-change:transform,opacity;
+  transform:translateX(0);
+  opacity:1;
+}
+#pages.page-slide-out-left{
+  transform:translateX(-24px);
+  opacity:.25;
+  transition:transform 130ms ease-in,opacity 130ms ease-in;
+}
+#pages.page-slide-out-right{
+  transform:translateX(24px);
+  opacity:.25;
+  transition:transform 130ms ease-in,opacity 130ms ease-in;
+}
+#pages.page-slide-in-from-right{
+  animation:pageInRight 220ms cubic-bezier(.22,.61,.36,1);
+}
+#pages.page-slide-in-from-left{
+  animation:pageInLeft 220ms cubic-bezier(.22,.61,.36,1);
+}
+@keyframes pageInRight{
+  from{transform:translateX(28px);opacity:.2}
+  to{transform:translateX(0);opacity:1}
+}
+@keyframes pageInLeft{
+  from{transform:translateX(-28px);opacity:.2}
+  to{transform:translateX(0);opacity:1}
+}
+
+
+/* Symbol-free progress cells */
+.state-swatch{
+  display:inline-block;
+  width:12px;height:12px;
+  border-radius:3px;
+  vertical-align:-1px;
+  border:1px solid #c9c9c9;
+}
+.state-swatch.started{background:#d9d9d9;}
+.state-swatch.done{background:#171717;border-color:#171717;}
+
+button.state-started{
+  background:#d9d9d9 !important;
+  color:#222 !important;
+}
+button.state-done{
+  background:#171717 !important;
+  color:#fff !important;
+  border-color:#171717 !important;
+}
+
 </style>
 </head>
 <body>
@@ -86,12 +140,12 @@ button{font:inherit;color:inherit}
 <div class="card">
 <div class="summary-top"><div><div class="summary-title">総合進捗</div><div class="percentages"><span>着手 <b id="startedPercent">0%</b></span><span>完成 <b id="donePercent">0%</b></span></div></div><div id="completePages" class="complete-pages">完成 0 / 48P</div></div>
 <div class="dual-bar"><div id="mainStarted" class="started-bar"></div><div id="mainDone" class="done-bar"></div></div>
-<div class="legend"><span>△ 着手中</span><span>● 完成</span></div>
+<div class="legend"><span><i class="state-swatch started"></i> 着手中</span><span><i class="state-swatch done"></i> 完成</span></div>
 </div>
 <div class="card"><div class="section-title">工程別進捗</div><div id="stageProgress"></div></div>
 <div class="card">
 <div class="table-toolbar"><div class="section-title" style="margin:0">工程表</div><div id="range" class="range"></div></div>
-<div class="table-head"><div></div><div class="head">ネーム</div><div class="head">人物<br>ペン</div><div class="head">背景<br>/3D</div><div class="head">トーン<br>ベタ</div><div class="head">写植</div></div>
+<div class="table-head"><div></div><div class="head">ネーム</div><div class="head">ペン</div><div class="head">背景</div><div class="head">トーン</div><div class="head">写植</div></div>
 <div id="pages"></div>
 <div class="navigation"><button id="prev" class="nav-button">← 前</button><div id="navPage" class="nav-page"></div><button id="next" class="nav-button">次 →</button></div>
 </div>
@@ -142,7 +196,7 @@ button{font:inherit;color:inherit}
 
 <script>
 const STORAGE_KEY="manga-progress-v1";
-const stages=["ネーム","人物ペン","背景/3D","トーン・ベタ","写植"];
+const stages=["ネーム","ペン","背景","トーン","写植"];
 let totalPages=48,startPage=1,currentView=0,progress=createProgress(48);
 let history={day:"",baselineDone:0,days:{}};
 let pageNotes={};
@@ -343,7 +397,9 @@ function renderPages(){
     row.appendChild(num);
     for(let s=0;s<5;s++){
       const b=document.createElement("button");b.className="progress-cell state"+progress[p][s];
-      b.textContent=progress[p][s]===1?"△":progress[p][s]===2?"●":"";
+      b.textContent="";
+      b.classList.toggle("state-started",progress[p][s]===1);
+      b.classList.toggle("state-done",progress[p][s]===2);
       b.onclick=()=>{progress[p][s]=(progress[p][s]+1)%3;save();renderPages();updateSummary()};
       row.appendChild(b);
     }
@@ -388,6 +444,60 @@ document.getElementById("backupFile").addEventListener("change",async e=>{
   e.target.value="";
 });
 load();syncRangeUI();save();render();
+
+// --- Smooth swipe navigation prototype ---
+(function(){
+  const swipeArea=document.getElementById("pages");
+  if(!swipeArea)return;
+
+  let startX=0,startY=0,tracking=false,animating=false;
+  const MIN_X=55,MAX_Y=50;
+
+  function changePage(direction){
+    if(animating)return;
+    const maxView=Math.max(0,Math.ceil(totalPages/12)-1);
+    if(direction==="next" && currentView>=maxView)return;
+    if(direction==="prev" && currentView<=0)return;
+
+    animating=true;
+    const outClass=direction==="next"?"page-slide-out-left":"page-slide-out-right";
+    const inClass=direction==="next"?"page-slide-in-from-right":"page-slide-in-from-left";
+
+    swipeArea.classList.remove("page-slide-in-from-right","page-slide-in-from-left");
+    swipeArea.classList.add(outClass);
+
+    setTimeout(()=>{
+      currentView += direction==="next" ? 1 : -1;
+      swipeArea.classList.remove(outClass);
+      renderPages();
+
+      // Restart entrance animation cleanly.
+      void swipeArea.offsetWidth;
+      swipeArea.classList.add(inClass);
+      setTimeout(()=>{
+        swipeArea.classList.remove(inClass);
+        animating=false;
+      },230);
+    },130);
+  }
+
+  swipeArea.addEventListener("touchstart",e=>{
+    if(animating || e.touches.length!==1)return;
+    startX=e.touches[0].clientX;
+    startY=e.touches[0].clientY;
+    tracking=true;
+  },{passive:true});
+
+  swipeArea.addEventListener("touchend",e=>{
+    if(!tracking || !e.changedTouches.length)return;
+    tracking=false;
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=e.changedTouches[0].clientY-startY;
+    if(Math.abs(dx)<MIN_X || Math.abs(dy)>MAX_Y || Math.abs(dx)<=Math.abs(dy))return;
+    changePage(dx<0?"next":"prev");
+  },{passive:true});
+})();
+
 </script>
 </body>
 </html>

@@ -31,7 +31,7 @@ button{font:inherit;color:inherit}
 .table-head{margin-bottom:5px}.head{color:var(--muted);font-size:9px;line-height:1.15;text-align:center}
 .page-number{text-align:center;color:var(--muted);font-size:11px}.page-row{margin-bottom:4px}
 .progress-cell{height:39px;padding:0;border:1px solid var(--border);border-radius:6px;background:white;font-size:15px;font-weight:700}
-.progress-cell.state1{background:#e5e5e5}.progress-cell.state2{background:#222;color:white;border-color:#222}
+.progress-cell.state1{background:var(--started)}.progress-cell.state2{background:#222;color:white;border-color:#222}
 .table-toolbar{align-items:center;margin-bottom:10px}.range,.nav-page{color:var(--muted);font-size:12px}
 .navigation{align-items:center;margin-top:12px}.nav-button:disabled{opacity:.3}.saved{text-align:center;color:var(--muted);font-size:11px;margin-top:12px}
 .backup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -108,11 +108,11 @@ button{font:inherit;color:inherit}
   vertical-align:-1px;
   border:1px solid #c9c9c9;
 }
-.state-swatch.started{background:#d9d9d9;}
+.state-swatch.started{background:var(--started);}
 .state-swatch.done{background:#171717;border-color:#171717;}
 
 button.state-started{
-  background:#d9d9d9 !important;
+  background:var(--started) !important;
   color:#222 !important;
 }
 button.state-done{

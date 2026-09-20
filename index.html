@@ -99,41 +99,24 @@ const box=document.getElementById("backupStatus");
 box.style.display="block";
 box.innerHTML=message;
 }
-async function exportBackup(){
+function exportBackup(){
 try{
 const data=makeBackup();
 const date=new Date().toISOString().slice(0,10);
 const fileName=`${safeFileName(data.title)}_backup_${date}.json`;
-const file=new File([JSON.stringify(data,null,2)],fileName,{type:"application/json"});
-
-/* Android/Chromeでは共有シート経由を優先 */
-if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
-await navigator.share({
-title:"漫画進捗バックアップ",
-text:"漫画制作進捗のバックアップです。",
-files:[file]
-});
-showBackupStatus(`✅ バックアップを共有しました。<br><b>${fileName}</b><br><span style="color:var(--muted)">共有先で「Files」「Drive」などを選んで保存してください。</span>`);
-return;
-}
-
-/* 共有非対応ブラウザでは従来のダウンロードを試す */
-const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
 const url=URL.createObjectURL(blob);
-const a=document.createElement("a");
-a.href=url;
-a.download=fileName;
-document.body.appendChild(a);
-a.click();
-a.remove();
-setTimeout(()=>URL.revokeObjectURL(url),3000);
-showBackupStatus(`✅ バックアップの保存処理を実行しました。<br><b>${fileName}</b><br><span style="color:var(--muted)">端末の「ダウンロード」フォルダを確認してください。</span>`);
+const link=document.createElement("a");
+link.href=url;
+link.download=fileName;
+link.style.display="none";
+document.body.appendChild(link);
+link.click();
+link.remove();
+setTimeout(()=>URL.revokeObjectURL(url),5000);
+showBackupStatus(`✅ バックアップを保存しました。<br><b>${fileName}</b><br><span style="color:var(--muted)">Chromeのダウンロード一覧または端末の「Downloads」を確認してください。</span>`);
 }catch(err){
-if(err && err.name==="AbortError"){
-showBackupStatus("バックアップ保存をキャンセルしました。");
-}else{
-showBackupStatus(`❌ バックアップを保存できませんでした。<br><span style="color:var(--muted)">この開き方ではファイル共有が制限されている可能性があります。</span>`);
-}
+showBackupStatus(`❌ バックアップを保存できませんでした。<br><span style="color:var(--muted)">${String(err.message||err)}</span>`);
 }
 }
 function restoreBackup(data){

@@ -172,6 +172,16 @@ button.state-done{
 .memo-jump{border:0;background:#f1f1f1;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700}
 .memo-empty{text-align:center;color:var(--muted);font-size:12px;padding:30px 10px}
 
+
+/* 工程表：常に12P分の高さを確保 */
+#pages{
+  min-height:516px;
+  box-sizing:border-box;
+}
+@media(max-width:360px){
+  #pages{min-height:480px}
+}
+
 </style>
 </head>
 <body>
@@ -197,6 +207,10 @@ button.state-done{
 <b>〜</b>
 <div><input id="endPageInput" type="number" min="1" max="999" value="48"><span>P</span></div>
 </div>
+<div class="label" style="margin-top:15px">創作開始日</div>
+<input id="creationStartDateInput" type="date">
+<div class="label" style="margin-top:15px">締切予定日</div>
+<input id="deadlineInput" type="date">
 </div>
 <div class="card">
 <div class="summary-top"><div><div class="summary-title">総合進捗</div><div class="percentages"><span>着手 <b id="startedPercent">0%</b></span><span>完成 <b id="donePercent">0%</b></span></div></div><div id="completePages" class="complete-pages">完成 0 / 48P</div></div>
@@ -223,6 +237,7 @@ button.state-done{
 <div><b>完成予想</b><small>着手=0.5工程として直近7日から算出</small></div>
 <div id="forecastDate" class="forecast-date">—<br><span style="font-size:10px;color:var(--muted);font-weight:400">データ収集中</span></div>
 </div>
+<div id="deadlineStatus" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;line-height:1.65;color:var(--muted)"></div>
 </div>
 <div class="card">
 <div class="section-title">バックアップ</div>
@@ -270,6 +285,10 @@ button.state-done{
       <b>〜</b>
       <div><input id="newProjectEnd" type="number" min="1" max="999" value="1"><span>P</span></div>
     </div>
+    <div class="label" style="margin-top:14px">創作開始日</div>
+    <input id="newProjectCreationStartDate" type="date">
+    <div class="label" style="margin-top:14px">締切予定日</div>
+    <input id="newProjectDeadline" type="date">
     <div class="project-modal-actions">
       <button id="cancelNewProject" class="project-cancel-button">キャンセル</button>
       <button id="createNewProject" class="project-create-button">作成</button>
@@ -347,6 +366,8 @@ function makeProjectData(){
   rollHistory();
   return {
     title:document.getElementById("title").value,
+    creationStartDate:document.getElementById("creationStartDateInput").value||"",
+    deadline:document.getElementById("deadlineInput").value||"",
     totalPages,startPage,
     progress:progress.map(r=>[...r]),
     history:JSON.parse(JSON.stringify(history)),
@@ -357,7 +378,7 @@ function freshProjectData(title="新しい作品",sp=1,ep=1){
   const n=Math.max(1,Math.min(300,ep-sp+1));
   const p=createProgress(n);
   return {
-    title,totalPages:n,startPage:sp,progress:p,
+    title,creationStartDate:"",deadline:"",totalPages:n,startPage:sp,progress:p,
     history:{day:localDate(),baselineDone:0,baselineWeighted:0,weightedDays:{},days:{}},
     pageNotes:{}
   };
@@ -384,6 +405,8 @@ function normalizeProjectData(s){
   let pg=Array.from({length:n},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(s?.progress?.[p]?.[i])?s.progress[p][i]:0));
   return {
     title:typeof s?.title==="string"&&s.title?s.title:"無題",
+    creationStartDate:typeof s?.creationStartDate==="string"?s.creationStartDate:"",
+    deadline:typeof s?.deadline==="string"?s.deadline:"",
     totalPages:n,startPage:sp,progress:pg,
     history:s?.history&&typeof s.history==="object"?s.history:null,
     pageNotes:s?.pageNotes&&typeof s.pageNotes==="object"?s.pageNotes:{}
@@ -426,6 +449,8 @@ function applyProjectData(s){
   progress=p.progress;
   pageNotes=p.pageNotes;
   document.getElementById("title").value=p.title;
+  document.getElementById("creationStartDateInput").value=p.creationStartDate||"";
+  document.getElementById("deadlineInput").value=p.deadline||"";
   history=p.history?normalizeHistory(p.history):{day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
   rollHistory();
   currentView=0;
@@ -468,7 +493,7 @@ function renderProjectList(){
     item.innerHTML=`<div class="project-item-main">
       <div style="min-width:0">
         <div class="project-item-title"></div>
-        <div class="project-item-meta">全${p.totalPages}P ・ 完成 ${donePages}P ・ 全工程 ${projectPercent(p)}%</div>
+        <div class="project-item-meta">全${p.totalPages}P ・ 完成 ${donePages}P ・ 全工程 ${projectPercent(p)}%${p.creationStartDate?` ・ 創作開始 ${p.creationStartDate.replaceAll("-","/")}`:""}${p.deadline?` ・ 締切 ${p.deadline.replaceAll("-","/")}`:""}</div>
       </div>
       <button class="project-open-button">開く</button>
     </div>
@@ -605,6 +630,49 @@ function renderHistory(){
   }else{
     forecastDate.innerHTML=`—<br><span style="font-size:10px;color:var(--muted);font-weight:400">データ収集中</span>`;
   }
+
+  // 締切予定日と完成予想の差分
+  const deadlineEl=document.getElementById("deadlineStatus");
+  if(deadlineEl){
+    const active=projectStore?.projects?.[projectStore.activeProjectId];
+    const deadline=active?.deadline||document.getElementById("deadlineInput")?.value||"";
+    if(!deadline){
+      deadlineEl.textContent="";
+    }else if(doneCount()===totalPages*5){
+      deadlineEl.textContent="締切 "+deadline.replaceAll("-","/")+" ・ 完成済み";
+    }else{
+      const dl=new Date(deadline+"T00:00:00");
+      const todayDate=new Date(localDate()+"T00:00:00");
+      const msDay=86400000;
+      const daysToDeadline=Math.round((dl-todayDate)/msDay);
+      const remWeighted=Math.max(0,totalPages*5-weightedCount());
+      const needPerDay=daysToDeadline>=0 ? remWeighted/Math.max(1,daysToDeadline+1) : null;
+
+      let forecastDiff="";
+      if(weightedAvg>0){
+        const forecastDays=Math.ceil(remWeighted/weightedAvg);
+        const forecastDate=new Date(todayDate);
+        forecastDate.setDate(forecastDate.getDate()+forecastDays);
+        const diff=Math.round((dl-forecastDate)/msDay);
+        if(diff>0) forecastDiff=`完成予想は締切より ${diff}日早いペース`;
+        else if(diff<0) forecastDiff=`完成予想は締切より ${Math.abs(diff)}日超過するペース`;
+        else forecastDiff="完成予想は締切予定日と同日";
+      }else{
+        forecastDiff="完成予想との差分は、作業履歴がたまると表示";
+      }
+
+      const deadlineLabel=daysToDeadline>=0
+        ? `締切まで あと${daysToDeadline}日`
+        : `締切を ${Math.abs(daysToDeadline)}日超過`;
+
+      const paceLabel=needPerDay===null
+        ? ""
+        : ` ・ 必要ペース 1日${needPerDay.toFixed(1)}工程`;
+
+      deadlineEl.textContent=`${deadlineLabel} ・ ${forecastDiff}${paceLabel}`;
+    }
+  }
+
 }
 
 let stickyPage=null,stickyColor="";
@@ -689,6 +757,8 @@ function applyPageRange(){
 }
 startPageInput.addEventListener("change",applyPageRange);
 endPageInput.addEventListener("change",applyPageRange);
+document.getElementById("creationStartDateInput").addEventListener("change",save);
+document.getElementById("deadlineInput").addEventListener("change",()=>{save();renderHistory();});
 document.getElementById("title").addEventListener("input",save);
 document.getElementById("exportBackup").addEventListener("click",exportBackup);
 document.getElementById("importBackup").addEventListener("click",()=>document.getElementById("backupFile").click());
@@ -783,6 +853,8 @@ document.getElementById("newProjectButton").onclick=()=>{
   document.getElementById("newProjectTitle").value="";
   document.getElementById("newProjectStart").value=1;
   document.getElementById("newProjectEnd").value=1;
+  document.getElementById("newProjectCreationStartDate").value="";
+  document.getElementById("newProjectDeadline").value="";
   document.getElementById("newProjectTotal").textContent="全1P";
   document.getElementById("projectModal").classList.add("open");
   setTimeout(()=>document.getElementById("newProjectTitle").focus(),50);
@@ -803,6 +875,8 @@ document.getElementById("createNewProject").onclick=()=>{
   if(b-a+1>300){alert("1作品300ページまでです。");return;}
   const id=newProjectId();
   projectStore.projects[id]=freshProjectData(title,a,b);
+  projectStore.projects[id].creationStartDate=document.getElementById("newProjectCreationStartDate").value||"";
+  projectStore.projects[id].deadline=document.getElementById("newProjectDeadline").value||"";
   projectStore.activeProjectId=id;
   persistProjectStore();
   document.getElementById("projectModal").classList.remove("open");

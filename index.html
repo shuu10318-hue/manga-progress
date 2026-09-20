@@ -138,6 +138,8 @@ button.state-done{
 .project-item-title{font-weight:800;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .project-item-meta{font-size:11px;color:var(--muted);margin-top:5px}
 .project-open-button{padding:0 14px;flex:none}
+.project-edit-button{min-height:42px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:#fff;font-weight:700;flex:none}
+.project-item-actions{display:flex;gap:7px;align-items:center}
 .project-empty{background:#fff;border:1px dashed var(--border);border-radius:14px;padding:28px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7}
 .project-actions{display:flex;justify-content:flex-end;margin-top:9px}
 .project-delete-button{border:0;background:transparent;color:#999;font-size:11px;padding:5px}
@@ -182,6 +184,31 @@ button.state-done{
   #pages{min-height:480px}
 }
 
+
+/* 作品一覧：操作ボタンをカード内に収める */
+.project-item-main{align-items:flex-start}
+.project-item-main>div:first-child{min-width:0;flex:1}
+.project-item-actions{
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex:0 0 auto;
+}
+.project-edit-button,.project-open-button{
+  min-width:0;
+  width:auto;
+  padding:0 11px;
+  white-space:nowrap;
+}
+@media(max-width:390px){
+  .project-item{padding:12px}
+  .project-item-main{gap:8px}
+  .project-edit-button,.project-open-button{
+    padding:0 9px;
+    font-size:12px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -197,7 +224,7 @@ button.state-done{
 
 <div class="app" id="editorApp" style="display:none">
 <div class="top-title"><h1>漫画制作進捗</h1><div class="top-actions"><button id="memoListButton" class="memo-list-button">メモ一覧</button><button id="backToProjects" class="project-list-button">作品一覧</button></div></div>
-<div class="card">
+<div class="card" style="display:none">
 <div class="label">作品名</div><input id="title" value="ばちぼこゾンビランド" placeholder="作品名">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;margin-bottom:7px">
 <div class="label" style="margin:0">制作ページ数</div><div id="totalPageLabel" style="font-size:11px;color:var(--muted)">全48P</div>
@@ -268,6 +295,31 @@ button.state-done{
       <button class="memo-filter" data-filter="#a9ddb0">緑</button>
     </div>
     <div id="memoListBody" class="memo-scroll"></div>
+  </div>
+</div>
+
+<div id="editProjectModal" class="project-modal">
+  <div class="project-sheet">
+    <h2>作品編集</h2>
+    <div class="label">作品名</div>
+    <input id="editProjectTitle" placeholder="作品名">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:7px">
+      <div class="label" style="margin:0">制作ページ</div>
+      <div id="editProjectTotal" style="font-size:11px;color:var(--muted)"></div>
+    </div>
+    <div class="page-range">
+      <div><input id="editProjectStart" type="number" min="1" max="999"><span>P</span></div>
+      <b>〜</b>
+      <div><input id="editProjectEnd" type="number" min="1" max="999"><span>P</span></div>
+    </div>
+    <div class="label" style="margin-top:14px">創作開始日</div>
+    <input id="editProjectCreationStartDate" type="date">
+    <div class="label" style="margin-top:14px">締切予定日</div>
+    <input id="editProjectDeadline" type="date">
+    <div class="project-modal-actions">
+      <button id="cancelEditProject" class="project-cancel-button">キャンセル</button>
+      <button id="saveEditProject" class="project-create-button">保存</button>
+    </div>
   </div>
 </div>
 
@@ -495,11 +547,15 @@ function renderProjectList(){
         <div class="project-item-title"></div>
         <div class="project-item-meta">全${p.totalPages}P ・ 完成 ${donePages}P ・ 全工程 ${projectPercent(p)}%${p.creationStartDate?` ・ 創作開始 ${p.creationStartDate.replaceAll("-","/")}`:""}${p.deadline?` ・ 締切 ${p.deadline.replaceAll("-","/")}`:""}</div>
       </div>
-      <button class="project-open-button">開く</button>
+      <div class="project-item-actions">
+        <button class="project-edit-button">編集</button>
+        <button class="project-open-button">開く</button>
+      </div>
     </div>
     <div class="project-actions"><button class="project-delete-button">この作品を削除</button></div>`;
     item.querySelector(".project-item-title").textContent=p.title||"無題";
     item.querySelector(".project-open-button").onclick=()=>openProject(id);
+    item.querySelector(".project-edit-button").onclick=()=>openProjectEdit(id);
     item.querySelector(".project-delete-button").onclick=()=>{
       const name=p.title||"無題";
       if(!confirm(`「${name}」を削除しますか？\nこの操作は元に戻せません。`))return;
@@ -939,6 +995,59 @@ showProjectHome();
     changePage(dx<0?"next":"prev");
   },{passive:true});
 })();
+
+
+let editingProjectId=null;
+function updateEditProjectTotal(){
+  const a=Math.max(1,Number(document.getElementById("editProjectStart").value)||1);
+  const b=Math.max(a,Number(document.getElementById("editProjectEnd").value)||a);
+  document.getElementById("editProjectTotal").textContent=`全${b-a+1}P`;
+}
+function openProjectEdit(id){
+  const p=projectStore.projects[id]; if(!p)return;
+  editingProjectId=id;
+  document.getElementById("editProjectTitle").value=p.title||"";
+  document.getElementById("editProjectStart").value=p.startPage||1;
+  document.getElementById("editProjectEnd").value=(p.startPage||1)+(p.totalPages||1)-1;
+  document.getElementById("editProjectCreationStartDate").value=p.creationStartDate||"";
+  document.getElementById("editProjectDeadline").value=p.deadline||"";
+  updateEditProjectTotal();
+  document.getElementById("editProjectModal").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function closeProjectEdit(){
+  document.getElementById("editProjectModal").classList.remove("open");
+  document.body.style.overflow="";
+  editingProjectId=null;
+}
+["editProjectStart","editProjectEnd"].forEach(id=>document.getElementById(id).addEventListener("input",updateEditProjectTotal));
+document.getElementById("cancelEditProject").addEventListener("click",closeProjectEdit);
+document.getElementById("editProjectModal").addEventListener("click",e=>{if(e.target.id==="editProjectModal")closeProjectEdit();});
+document.getElementById("saveEditProject").addEventListener("click",()=>{
+  if(!editingProjectId)return;
+  const p=projectStore.projects[editingProjectId];
+  const newStart=Math.max(1,Number(document.getElementById("editProjectStart").value)||1);
+  const newEnd=Math.max(newStart,Number(document.getElementById("editProjectEnd").value)||newStart);
+  const newTotal=newEnd-newStart+1;
+  const oldStart=p.startPage||1, oldProgress=Array.isArray(p.progress)?p.progress:[];
+  p.progress=Array.from({length:newTotal},(_,i)=>{
+    const oldIndex=(newStart+i)-oldStart;
+    return oldIndex>=0&&oldIndex<oldProgress.length?[...oldProgress[oldIndex]]:Array(5).fill(0);
+  });
+  p.title=document.getElementById("editProjectTitle").value.trim()||"無題";
+  p.startPage=newStart; p.totalPages=newTotal;
+  p.creationStartDate=document.getElementById("editProjectCreationStartDate").value||"";
+  p.deadline=document.getElementById("editProjectDeadline").value||"";
+  persistProjectStore();
+  closeProjectEdit();
+  renderProjectList();
+});
+
+
+const editOverlay=document.getElementById("editProjectModal");
+["touchstart","touchmove","touchend"].forEach(type=>{
+  editOverlay.addEventListener(type,e=>e.stopPropagation(),{passive:true});
+});
 
 </script>
 </body>

@@ -159,7 +159,7 @@ button.state-done{
 <div class="label">直近7日間</div>
 <div id="historyChart" class="history-chart"></div>
 <div class="forecast">
-<div><b>完成予想</b><small>直近7日のペースから算出</small></div>
+<div><b>完成予想</b><small>着手=0.5工程として直近7日から算出</small></div>
 <div id="forecastDate" class="forecast-date">—<br><span style="font-size:10px;color:var(--muted);font-weight:400">データ収集中</span></div>
 </div>
 </div>
@@ -207,16 +207,19 @@ function localDate(d=new Date()){
   return `${y}-${m}-${day}`;
 }
 function doneCount(){return progress.flat().filter(v=>v===2).length}
+function weightedCount(){return progress.flat().reduce((sum,v)=>sum+(v===2?1:v===1?0.5:0),0)}
 function addDays(dateStr,n){
   const [y,m,d]=dateStr.split("-").map(Number);
   const x=new Date(y,m-1,d); x.setDate(x.getDate()+n); return localDate(x);
 }
 function normalizeHistory(h){
   const today=localDate();
-  if(!h||typeof h!=="object") return {day:today,baselineDone:doneCount(),days:{}};
+  if(!h||typeof h!=="object") return {day:today,baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
   return {
     day:typeof h.day==="string"&&h.day?h.day:today,
     baselineDone:Number.isFinite(h.baselineDone)?h.baselineDone:doneCount(),
+    baselineWeighted:Number.isFinite(h.baselineWeighted)?h.baselineWeighted:weightedCount(),
+    weightedDays:h.weightedDays&&typeof h.weightedDays==="object"?h.weightedDays:{},
     days:h.days&&typeof h.days==="object"?h.days:{}
   };
 }
@@ -226,13 +229,16 @@ function rollHistory(){
   if(history.day===today)return;
   // The last known day ends at the current saved state.
   history.days[history.day]=doneCount()-history.baselineDone;
+  history.weightedDays[history.day]=weightedCount()-history.baselineWeighted;
   // Missing calendar days had no recorded changes.
   let d=addDays(history.day,1);
   while(d<today){ if(history.days[d]===undefined)history.days[d]=0; d=addDays(d,1); }
   history.day=today;
   history.baselineDone=doneCount();
+  history.baselineWeighted=weightedCount();
 }
 function todayDelta(){rollHistory();return doneCount()-history.baselineDone}
+function todayWeightedDelta(){rollHistory();return weightedCount()-history.baselineWeighted}
 function save(){
   rollHistory();
   const data={title:document.getElementById("title").value,totalPages,startPage,progress,history,pageNotes};
@@ -245,7 +251,7 @@ function save(){
 function load(){
   try{
     const s=JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if(!s){history={day:localDate(),baselineDone:doneCount(),days:{}};return}
+    if(!s){history={day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};return}
     if(s.title)document.getElementById("title").value=s.title;
     if(Number.isInteger(s.totalPages)&&s.totalPages>0)totalPages=s.totalPages;
     if(Number.isInteger(s.startPage)&&s.startPage>0)startPage=s.startPage;
@@ -253,7 +259,7 @@ function load(){
     pageNotes=(s.pageNotes&&typeof s.pageNotes==="object")?s.pageNotes:{};
     history=normalizeHistory(s.history);
     rollHistory();
-  }catch(e){history={day:localDate(),baselineDone:doneCount(),days:{}}}
+  }catch(e){history={day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}}}
 }
 function makeBackup(){
   rollHistory();
@@ -284,7 +290,7 @@ function restoreBackup(data){
   progress=Array.from({length:totalPages},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(data.progress?.[p]?.[i])?data.progress[p][i]:0));
   document.getElementById("title").value=typeof data.title==="string"?data.title:"";
   pageNotes=(data.pageNotes&&typeof data.pageNotes==="object")?data.pageNotes:{};
-  history=data.history?normalizeHistory(data.history):{day:localDate(),baselineDone:doneCount(),days:{}};
+  history=data.history?normalizeHistory(data.history):{day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
   rollHistory();
   currentView=0;
   syncRangeUI();
@@ -339,11 +345,17 @@ function renderHistory(){
     historyChart.appendChild(el);
   });
 
-  const remaining=totalPages*5-doneCount();
+  const weightedValues=[];
+  for(let i=-6;i<=0;i++){
+    const date=addDays(today,i);
+    weightedValues.push(date===today?todayWeightedDelta():Number(history.weightedDays?.[date]||0));
+  }
+  const weightedAvg=weightedValues.reduce((a,v)=>a+v,0)/7;
+  const remaining=totalPages*5-weightedCount();
   if(remaining<=0){
     forecastDate.innerHTML=`完成！<br><span style="font-size:10px;color:var(--muted);font-weight:400">全工程完了</span>`;
-  }else if(avg>0){
-    const days=Math.ceil(remaining/avg),d=new Date();d.setDate(d.getDate()+days);
+  }else if(weightedAvg>0){
+    const days=Math.ceil(remaining/weightedAvg),d=new Date();d.setDate(d.getDate()+days);
     forecastDate.innerHTML=`${d.getMonth()+1}/${d.getDate()}<br><span style="font-size:10px;color:var(--muted);font-weight:400">あと約${days}日</span>`;
   }else{
     forecastDate.innerHTML=`—<br><span style="font-size:10px;color:var(--muted);font-weight:400">データ収集中</span>`;

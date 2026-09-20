@@ -209,9 +209,89 @@ button.state-done{
   }
 }
 
+
+.help-fab{
+  position:static;z-index:auto;
+  width:25px;height:25px;min-width:25px;padding:0;margin-left:7px;
+  border-radius:50%;border:1px solid var(--border);
+  background:var(--card,#fff);color:var(--text,#222);
+  font-size:14px;font-weight:800;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+  box-shadow:none;vertical-align:middle;
+}
+.help-overlay{
+  position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.42);
+  display:none;align-items:flex-end;justify-content:center;
+}
+.help-overlay.open{display:flex}
+.help-sheet{
+  width:min(520px,100%);height:78vh;max-height:78vh;
+  background:var(--card,#fff);border-radius:18px 18px 0 0;
+  box-sizing:border-box;padding:18px 18px 20px;
+  display:flex;flex-direction:column;
+}
+.help-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.help-title{font-size:18px;font-weight:800}
+.help-close{
+  width:34px;height:34px;border:1px solid var(--border);border-radius:50%;
+  background:transparent;font-size:20px;line-height:1
+}
+.help-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.help-item{padding:14px 0;border-bottom:1px solid var(--border)}
+.help-item:last-child{border-bottom:0}
+.help-item-title{font-weight:800;margin-bottom:5px}
+.help-item-text{font-size:13px;line-height:1.65;color:var(--muted)}
+.help-states{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+.help-state{display:flex;align-items:center;gap:6px;font-size:12px}
+.help-swatch{width:22px;height:22px;border:1px solid var(--border);border-radius:5px;background:#fff}
+.help-swatch.started{background:var(--started,#aaa)}
+.help-swatch.done{background:#222;border-color:#222}
+
 </style>
 </head>
 <body>
+
+
+<div id="helpModal" class="help-overlay" aria-hidden="true">
+  <div class="help-sheet" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <div id="helpTitle" class="help-title">使い方</div>
+      <button id="helpClose" class="help-close" type="button" aria-label="閉じる">×</button>
+    </div>
+    <div class="help-scroll">
+      <div class="help-item">
+        <div class="help-item-title">工程マスをタップ</div>
+        <div class="help-item-text">タップするたびに「未着手 → 着手 → 完了 → 未着手」と切り替わります。</div>
+        <div class="help-states">
+          <div class="help-state"><span class="help-swatch"></span>未着手</div>
+          <div class="help-state"><span class="help-swatch started"></span>着手</div>
+          <div class="help-state"><span class="help-swatch done"></span>完了</div>
+        </div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-title">長押し＋スライド</div>
+        <div class="help-item-text">工程マスを約0.5秒長押しして、そのまま同じ工程をなぞると、最初のマスの状態を連続コピーできます。振動したらコピー開始です。</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-title">左右にスワイプ</div>
+        <div class="help-item-text">工程表を左右にスワイプすると、12ページずつ移動できます。「前」「次」ボタンでも移動できます。</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-title">ページ番号をタップ</div>
+        <div class="help-item-text">そのページに付箋メモを付けられます。赤・黄・青・緑で分類でき、「メモ一覧」から絞り込みやページ移動もできます。</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-title">進捗と完成予想</div>
+        <div class="help-item-text">着手率・完成率・工程別進捗を自動集計します。作業履歴から完成予想を計算し、締切を設定している場合は必要ペースも確認できます。</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-title">バックアップ</div>
+        <div class="help-item-text">JSONバックアップには作品・進捗・作業履歴・付箋などのデータを保存します。大きな変更の前にもバックアップしておくと安心です。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <div id="projectHome" style="display:none">
   <div class="project-home-head">
@@ -246,7 +326,7 @@ button.state-done{
 </div>
 <div class="card"><div class="section-title">工程別進捗</div><div id="stageProgress"></div></div>
 <div class="card">
-<div class="table-toolbar"><div class="section-title" style="margin:0">工程表</div><div id="range" class="range"></div></div>
+<div class="table-toolbar"><div style="display:flex;align-items:center"><div class="section-title" style="margin:0">工程表</div><button id="helpButton" class="help-fab" type="button" aria-label="使い方">?</button></div><div id="range" class="range"></div></div>
 <div class="table-head"><div></div><div class="head">ネーム</div><div class="head">ペン</div><div class="head">背景</div><div class="head">トーン</div><div class="head">写植</div></div>
 <div id="pages"></div>
 <div class="navigation"><button id="prev" class="nav-button">← 前</button><div id="navPage" class="nav-page"></div><button id="next" class="nav-button">次 →</button></div>
@@ -1138,6 +1218,28 @@ document.getElementById("saveEditProject").addEventListener("click",()=>{
 const editOverlay=document.getElementById("editProjectModal");
 ["touchstart","touchmove","touchend"].forEach(type=>{
   editOverlay.addEventListener(type,e=>e.stopPropagation(),{passive:true});
+});
+
+
+// 使い方ヘルプ
+const helpButton=document.getElementById("helpButton");
+const helpModal=document.getElementById("helpModal");
+const helpClose=document.getElementById("helpClose");
+function openHelp(){
+  helpModal.classList.add("open");
+  helpModal.setAttribute("aria-hidden","false");
+  document.body.style.overflow="hidden";
+}
+function closeHelp(){
+  helpModal.classList.remove("open");
+  helpModal.setAttribute("aria-hidden","true");
+  document.body.style.overflow="";
+}
+helpButton.addEventListener("click",openHelp);
+helpClose.addEventListener("click",closeHelp);
+helpModal.addEventListener("click",e=>{if(e.target===helpModal)closeHelp()});
+["touchstart","touchmove","touchend"].forEach(type=>{
+  helpModal.addEventListener(type,e=>e.stopPropagation(),{passive:true});
 });
 
 </script>

@@ -31,7 +31,7 @@ button{font:inherit;color:inherit}
 .table-head{margin-bottom:5px}.head{color:var(--muted);font-size:9px;line-height:1.15;text-align:center}
 .page-number{text-align:center;color:var(--muted);font-size:11px}.page-row{margin-bottom:4px}
 .progress-cell{height:39px;padding:0;border:1px solid var(--border);border-radius:6px;background:white;font-size:15px;font-weight:700}
-.progress-cell.state1{background:var(--started)}.progress-cell.state2{background:#222;color:white;border-color:#222}
+.progress-cell.state1{background:var(--started)}.progress-cell.state2{background:#222;color:white;border-color:#222}.progress-cell.paint-source{outline:2px solid #777;outline-offset:1px}
 .table-toolbar{align-items:center;margin-bottom:10px}.range,.nav-page{color:var(--muted);font-size:12px}
 .navigation{align-items:center;margin-top:12px}.nav-button:disabled{opacity:.3}.saved{text-align:center;color:var(--muted);font-size:11px;margin-top:12px}
 .backup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -779,9 +779,14 @@ function renderPages(){
     for(let s=0;s<5;s++){
       const b=document.createElement("button");b.className="progress-cell state"+progress[p][s];
       b.textContent="";
+      b.dataset.pageIndex=String(p);
+      b.dataset.stageIndex=String(s);
       b.classList.toggle("state-started",progress[p][s]===1);
       b.classList.toggle("state-done",progress[p][s]===2);
-      b.onclick=()=>{progress[p][s]=(progress[p][s]+1)%3;save();renderPages();updateSummary()};
+      b.onclick=()=>{
+        if(Date.now()<suppressCellClickUntil)return;
+        progress[p][s]=(progress[p][s]+1)%3;save();renderPages();updateSummary()
+      };
       row.appendChild(b);
     }
     pages.appendChild(row);
@@ -790,6 +795,91 @@ function renderPages(){
   range.textContent=`${startPage+start}–${startPage+end-1} / 全${totalPages}P`;navPage.textContent=`${currentView+1} / ${views}`;
   prev.disabled=currentView===0;next.disabled=currentView>=views-1;
 }
+
+// 長押しスライド：最初のマスの状態を、同じ工程の通過マスへコピーする
+let suppressCellClickUntil=0;
+let suppressPageSwipeUntil=0;
+let paintHoldTimer=null;
+let paintMode=false;
+let paintStartX=0,paintStartY=0;
+let paintStage=-1,paintValue=0;
+let paintTouched=new Set();
+let paintSourceCell=null;
+const PAINT_HOLD_MS=480;
+const PAINT_CANCEL_MOVE=12;
+
+function setCellVisual(cell,value){
+  cell.classList.remove("state0","state1","state2","state-started","state-done");
+  cell.classList.add("state"+value);
+  cell.classList.toggle("state-started",value===1);
+  cell.classList.toggle("state-done",value===2);
+}
+function cancelPaintHold(){
+  if(paintHoldTimer){clearTimeout(paintHoldTimer);paintHoldTimer=null}
+}
+function paintCellAtPoint(x,y){
+  const el=document.elementFromPoint(x,y);
+  const cell=el?.closest?.(".progress-cell");
+  if(!cell || !pages.contains(cell))return;
+  const p=Number(cell.dataset.pageIndex), s=Number(cell.dataset.stageIndex);
+  if(!Number.isInteger(p)||!Number.isInteger(s)||s!==paintStage)return;
+  const key=p+":"+s;
+  if(paintTouched.has(key))return;
+  paintTouched.add(key);
+  progress[p][s]=paintValue;
+  setCellVisual(cell,paintValue);
+}
+function finishPaint(){
+  cancelPaintHold();
+  if(!paintMode)return;
+  paintMode=false;
+  if(paintSourceCell)paintSourceCell.classList.remove("paint-source");
+  paintSourceCell=null;
+  suppressCellClickUntil=Date.now()+500;
+  suppressPageSwipeUntil=Date.now()+500;
+  save();
+  updateSummary();
+}
+pages.addEventListener("touchstart",e=>{
+  if(e.touches.length!==1)return;
+  const cell=e.target.closest?.(".progress-cell");
+  if(!cell)return;
+  cancelPaintHold();
+  paintMode=false;
+  paintTouched.clear();
+  paintStartX=e.touches[0].clientX;
+  paintStartY=e.touches[0].clientY;
+  paintSourceCell=cell;
+  paintHoldTimer=setTimeout(()=>{
+    const p=Number(cell.dataset.pageIndex),s=Number(cell.dataset.stageIndex);
+    if(!Number.isInteger(p)||!Number.isInteger(s))return;
+    paintMode=true;
+    paintStage=s;
+    paintValue=progress[p][s];
+    paintTouched.add(p+":"+s);
+    cell.classList.add("paint-source");
+    suppressCellClickUntil=Date.now()+1000;
+    suppressPageSwipeUntil=Date.now()+1000;
+    if(navigator.vibrate)navigator.vibrate(28);
+  },PAINT_HOLD_MS);
+},{passive:true});
+
+pages.addEventListener("touchmove",e=>{
+  if(e.touches.length!==1)return;
+  const t=e.touches[0];
+  if(!paintMode){
+    if(Math.hypot(t.clientX-paintStartX,t.clientY-paintStartY)>PAINT_CANCEL_MOVE)cancelPaintHold();
+    return;
+  }
+  // 塗りモード中だけ画面スクロール/ページスワイプを止める
+  e.preventDefault();
+  suppressPageSwipeUntil=Date.now()+500;
+  paintCellAtPoint(t.clientX,t.clientY);
+},{passive:false});
+
+pages.addEventListener("touchend",finishPaint,{passive:true});
+pages.addEventListener("touchcancel",finishPaint,{passive:true});
+
 function render(){renderPages();updateSummary()}
 prev.onclick=()=>{if(currentView>0){currentView--;renderPages()}};
 next.onclick=()=>{if(currentView<Math.ceil(totalPages/12)-1){currentView++;renderPages()}};
@@ -989,6 +1079,7 @@ showProjectHome();
   swipeArea.addEventListener("touchend",e=>{
     if(!tracking || !e.changedTouches.length)return;
     tracking=false;
+    if(Date.now()<suppressPageSwipeUntil)return;
     const dx=e.changedTouches[0].clientX-startX;
     const dy=e.changedTouches[0].clientY-startY;
     if(Math.abs(dx)<MIN_X || Math.abs(dy)>MAX_Y || Math.abs(dx)<=Math.abs(dy))return;

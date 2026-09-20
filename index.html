@@ -157,14 +157,15 @@ button.state-done{
 .top-actions{display:flex;gap:7px;flex:none}
 .memo-modal{position:fixed;inset:0;background:rgba(0,0,0,.32);display:none;align-items:flex-end;justify-content:center;z-index:1200}
 .memo-modal.open{display:flex}
-.memo-sheet{width:min(520px,100%);max-height:78vh;background:#fff;border-radius:18px 18px 0 0;padding:16px 14px 22px;display:flex;flex-direction:column}
+.memo-sheet{width:min(520px,100%);height:78vh;max-height:78vh;box-sizing:border-box;background:#fff;border-radius:18px 18px 0 0;padding:16px 14px 22px;display:flex;flex-direction:column}
+.memo-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .memo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .memo-head h2{font-size:18px;margin:0}
 .memo-close{border:0;background:#f1f1f1;border-radius:9px;padding:8px 12px;font-weight:700}
 .memo-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
 .memo-filter{border:1px solid var(--border);background:#fff;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:700}
 .memo-filter.active{background:#222;color:#fff;border-color:#222}
-.memo-scroll{overflow:auto;-webkit-overflow-scrolling:touch}
+
 .memo-item{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:#fff}
 .memo-page{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:1px solid rgba(0,0,0,.08)}
 .memo-text{font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
@@ -246,10 +247,10 @@ button.state-done{
     </div>
     <div class="memo-filters">
       <button class="memo-filter active" data-filter="all">すべて</button>
-      <button class="memo-filter" data-filter="#ef9a9a">赤</button>
+      <button class="memo-filter" data-filter="#f4a6a6">赤</button>
       <button class="memo-filter" data-filter="#f4dc8a">黄</button>
-      <button class="memo-filter" data-filter="#90caf9">青</button>
-      <button class="memo-filter" data-filter="#a5d6a7">緑</button>
+      <button class="memo-filter" data-filter="#9ec8f4">青</button>
+      <button class="memo-filter" data-filter="#a9ddb0">緑</button>
     </div>
     <div id="memoListBody" class="memo-scroll"></div>
   </div>
@@ -704,6 +705,13 @@ document.getElementById("backupFile").addEventListener("change",async e=>{
 });
 
 
+
+// メモ一覧表示中は、背面の12Pスワイプへタッチ操作を伝えない
+const memoOverlay=document.getElementById("memoListModal");
+["touchstart","touchmove","touchend"].forEach(type=>{
+  memoOverlay.addEventListener(type,e=>e.stopPropagation(),{passive:true});
+});
+
 let memoListFilter="all";
 function renderMemoList(){
   const body=document.getElementById("memoListBody");
@@ -738,6 +746,7 @@ function renderMemoList(){
       if(index<0||index>=totalPages)return;
       currentView=Math.floor(index/12);
       document.getElementById("memoListModal").classList.remove("open");
+      document.body.style.overflow="";
       render();
       const pages=document.getElementById("pages");
       if(pages)pages.scrollIntoView({behavior:"smooth",block:"start"});
@@ -751,9 +760,18 @@ document.getElementById("memoListButton").onclick=()=>{
   document.querySelectorAll(".memo-filter").forEach(b=>b.classList.toggle("active",b.dataset.filter==="all"));
   renderMemoList();
   document.getElementById("memoListModal").classList.add("open");
+  document.body.style.overflow="hidden";
 };
-document.getElementById("closeMemoList").onclick=()=>document.getElementById("memoListModal").classList.remove("open");
-document.getElementById("memoListModal").onclick=e=>{if(e.target.id==="memoListModal")e.currentTarget.classList.remove("open")};
+document.getElementById("closeMemoList").onclick=()=>{
+  document.getElementById("memoListModal").classList.remove("open");
+  document.body.style.overflow="";
+};
+document.getElementById("memoListModal").onclick=e=>{
+  if(e.target.id==="memoListModal"){
+    e.currentTarget.classList.remove("open");
+    document.body.style.overflow="";
+  }
+};
 document.querySelectorAll(".memo-filter").forEach(btn=>btn.onclick=()=>{
   memoListFilter=btn.dataset.filter;
   document.querySelectorAll(".memo-filter").forEach(b=>b.classList.toggle("active",b===btn));

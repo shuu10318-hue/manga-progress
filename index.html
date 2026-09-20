@@ -51,15 +51,22 @@ button{font:inherit;color:inherit}
 .forecast-date{text-align:right;font-size:17px;font-weight:800}
 .page-range{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.page-range>div{display:grid;grid-template-columns:1fr auto;gap:5px;align-items:center}.page-range input{width:100%;box-sizing:border-box}.page-range b{font-size:14px;color:var(--muted)}@media(max-width:360px){.app{padding-left:9px;padding-right:9px}.table-head,.page-row{grid-template-columns:22px repeat(5,minmax(0,1fr));gap:2px}.progress-cell{height:36px}.head{font-size:8px}}
 
-.other-card{margin-top:14px}
-.other-list{display:flex;flex-direction:column;gap:7px;margin-top:10px}
-.other-row{display:grid;grid-template-columns:1fr 46px 38px;gap:7px;align-items:center}
-.other-name{min-width:0;border:1px solid var(--border);border-radius:9px;padding:10px;font-size:13px;background:white}
-.other-state{height:40px;border:1px solid var(--border);border-radius:9px;background:white;font-weight:800;font-size:16px}
-.other-state.started{background:#fff3c7}
-.other-state.done{background:#dff3e4}
-.other-delete{height:40px;border:1px solid var(--border);border-radius:9px;background:white;color:var(--muted);font-size:16px}
-.other-add{width:100%;height:42px;border:1px dashed #aaa;border-radius:9px;background:white;font-weight:700;margin-top:9px}
+.page-number{cursor:pointer;position:relative;user-select:none}
+.page-number.note-marked{font-weight:800}
+.note-badge{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:4px;vertical-align:middle;background:#555}
+.sticky-modal{position:fixed;inset:0;background:rgba(0,0,0,.32);display:none;align-items:flex-end;justify-content:center;z-index:999}
+.sticky-modal.open{display:flex}
+.sticky-sheet{width:min(520px,100%);background:#fff;border-radius:18px 18px 0 0;padding:18px 14px 24px;box-sizing:border-box}
+.sticky-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.sticky-head h2{margin:0;font-size:18px}.sticky-close{border:0;background:transparent;font-size:24px}
+.sticky-sheet textarea{width:100%;min-height:110px;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:11px;font:inherit}
+.color-picks{display:flex;gap:11px;margin:10px 0 16px}
+.color-pick{width:34px;height:34px;border-radius:50%;border:2px solid transparent;box-shadow:0 0 0 1px #bbb}
+.color-pick.selected{border-color:#222;box-shadow:0 0 0 2px #fff,0 0 0 4px #222}
+.sticky-save{width:100%;height:44px;border:0;border-radius:10px;background:#222;color:#fff;font-weight:800}
+.sticky-actions{display:grid;grid-template-columns:1fr 1.7fr;gap:9px;margin-top:2px}
+.sticky-delete{height:44px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#777;font-weight:700}
+.sticky-delete:active{background:#f3f3f3}
 </style>
 </head>
 <body>
@@ -115,11 +122,22 @@ button{font:inherit;color:inherit}
 <div class="saved" id="saveMessage">変更は自動保存されます</div>
 </div>
 
-<div class="card other-card">
-  <div class="label">その他</div>
-  <div style="font-size:11px;color:var(--muted);margin-top:3px">表紙・裏表紙・あとがきなど、本文以外の制作物</div>
-  <div id="otherList" class="other-list"></div>
-  <button id="addOtherBtn" class="other-add">＋ 項目を追加</button>
+<div id="stickyModal" class="sticky-modal">
+ <div class="sticky-sheet">
+  <div class="sticky-head"><h2 id="stickyTitle">付箋</h2><button id="stickyClose" class="sticky-close">×</button></div>
+  <textarea id="stickyText" placeholder="修正点・忘れたくないことなど"></textarea>
+  <div class="label" style="margin-top:12px">マーカー</div>
+  <div class="color-picks">
+   <button type="button" class="color-pick" data-color="#f4a6a6" style="background:#f4a6a6"></button>
+   <button type="button" class="color-pick" data-color="#f4dc8a" style="background:#f4dc8a"></button>
+   <button type="button" class="color-pick" data-color="#9ec8f4" style="background:#9ec8f4"></button>
+   <button type="button" class="color-pick" data-color="#a9ddb0" style="background:#a9ddb0"></button>
+  </div>
+  <div class="sticky-actions">
+   <button type="button" id="stickyDelete" class="sticky-delete">付箋を削除</button>
+   <button type="button" id="stickySave" class="sticky-save">保存</button>
+  </div>
+ </div>
 </div>
 
 <script>
@@ -127,6 +145,7 @@ const STORAGE_KEY="manga-progress-v1";
 const stages=["ネーム","人物ペン","背景/3D","トーン・ベタ","写植"];
 let totalPages=48,startPage=1,currentView=0,progress=createProgress(48);
 let history={day:"",baselineDone:0,days:{}};
+let pageNotes={};
 
 function createProgress(n){return Array.from({length:n},()=>Array(5).fill(0))}
 function localDate(d=new Date()){
@@ -162,7 +181,7 @@ function rollHistory(){
 function todayDelta(){rollHistory();return doneCount()-history.baselineDone}
 function save(){
   rollHistory();
-  const data={title:document.getElementById("title").value,totalPages,startPage,progress,history};
+  const data={title:document.getElementById("title").value,totalPages,startPage,progress,history,pageNotes};
   localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
   const m=document.getElementById("saveMessage");
   m.textContent="保存しました ✓";
@@ -177,13 +196,14 @@ function load(){
     if(Number.isInteger(s.totalPages)&&s.totalPages>0)totalPages=s.totalPages;
     if(Number.isInteger(s.startPage)&&s.startPage>0)startPage=s.startPage;
     if(Array.isArray(s.progress))progress=Array.from({length:totalPages},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(s.progress?.[p]?.[i])?s.progress[p][i]:0));
+    pageNotes=(s.pageNotes&&typeof s.pageNotes==="object")?s.pageNotes:{};
     history=normalizeHistory(s.history);
     rollHistory();
   }catch(e){history={day:localDate(),baselineDone:doneCount(),days:{}}}
 }
 function makeBackup(){
   rollHistory();
-  return {app:"manga-progress",version:3,exportedAt:new Date().toISOString(),title:document.getElementById("title").value,totalPages,startPage,progress,history};
+  return {app:"manga-progress",version:4,exportedAt:new Date().toISOString(),title:document.getElementById("title").value,totalPages,startPage,progress,history,pageNotes};
 }
 function safeFileName(name){return (name||"漫画制作進捗").replace(/[\/:*?"<>|]/g,"_").trim()||"漫画制作進捗"}
 function showBackupStatus(message){
@@ -209,6 +229,7 @@ function restoreBackup(data){
   startPage=Number.isInteger(data.startPage)&&data.startPage>0?data.startPage:1;
   progress=Array.from({length:totalPages},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(data.progress?.[p]?.[i])?data.progress[p][i]:0));
   document.getElementById("title").value=typeof data.title==="string"?data.title:"";
+  pageNotes=(data.pageNotes&&typeof data.pageNotes==="object")?data.pageNotes:{};
   history=data.history?normalizeHistory(data.history):{day:localDate(),baselineDone:doneCount(),days:{}};
   rollHistory();
   currentView=0;
@@ -274,12 +295,52 @@ function renderHistory(){
     forecastDate.innerHTML=`—<br><span style="font-size:10px;color:var(--muted);font-weight:400">データ収集中</span>`;
   }
 }
+
+let stickyPage=null,stickyColor="";
+function openSticky(page){
+  stickyPage=page;
+  const n=pageNotes[String(page)]||{text:"",color:""};
+  stickyColor=n.color||"";
+  document.getElementById("stickyTitle").textContent=`${page}P 付箋`;
+  document.getElementById("stickyText").value=n.text||"";
+  document.querySelectorAll(".color-pick").forEach(b=>b.classList.toggle("selected",b.dataset.color===stickyColor));
+  document.getElementById("stickyModal").classList.add("open");
+}
+document.querySelectorAll(".color-pick").forEach(b=>b.onclick=()=>{
+  stickyColor=b.dataset.color||"";
+  document.querySelectorAll(".color-pick").forEach(x=>x.classList.toggle("selected",x===b));
+});
+document.getElementById("stickyClose").onclick=()=>document.getElementById("stickyModal").classList.remove("open");
+document.getElementById("stickyModal").onclick=e=>{if(e.target.id==="stickyModal")e.currentTarget.classList.remove("open")};
+document.getElementById("stickyDelete").onclick=()=>{
+  if(stickyPage===null)return;
+  delete pageNotes[String(stickyPage)];
+  stickyColor="";
+  document.getElementById("stickyText").value="";
+  save();
+  document.getElementById("stickyModal").classList.remove("open");
+  renderPages();
+};
+document.getElementById("stickySave").onclick=()=>{
+  const text=document.getElementById("stickyText").value.trim();
+  if(!stickyColor)stickyColor="#f4dc8a";
+  pageNotes[String(stickyPage)]={text,color:stickyColor};
+  save();
+  document.getElementById("stickyModal").classList.remove("open");
+  renderPages();
+};
+
 function renderPages(){
   pages.innerHTML="";
   const start=currentView*12,end=Math.min(start+12,totalPages);
   for(let p=start;p<end;p++){
     const row=document.createElement("div");row.className="page-row";
-    const num=document.createElement("div");num.className="page-number";num.textContent=startPage+p;row.appendChild(num);
+    const num=document.createElement("div");num.className="page-number";
+    const actualPage=startPage+p, note=pageNotes[String(actualPage)]||{text:"",color:""};
+    num.textContent=actualPage;
+    if(note.color)num.style.background=note.color;
+    num.onclick=()=>openSticky(actualPage);
+    row.appendChild(num);
     for(let s=0;s<5;s++){
       const b=document.createElement("button");b.className="progress-cell state"+progress[p][s];
       b.textContent=progress[p][s]===1?"△":progress[p][s]===2?"●":"";
@@ -326,46 +387,7 @@ document.getElementById("backupFile").addEventListener("change",async e=>{
   }catch(err){showBackupStatus("❌ このバックアップファイルは読み込めませんでした。")}
   e.target.value="";
 });
-
-function renderOther(){
-  if(!window.otherList) return;
-  otherList.innerHTML="";
-  otherTasks.forEach((item,i)=>{
-    const row=document.createElement("div");
-    row.className="other-row";
-    const name=document.createElement("input");
-    name.className="other-name";
-    name.value=item.name||"";
-    name.placeholder="項目名";
-    name.addEventListener("change",()=>{otherTasks[i].name=name.value.trim()||"無題";save();});
-    const state=document.createElement("button");
-    state.className="other-state "+(item.state===1?"started":item.state===2?"done":"");
-    state.textContent=item.state===1?"△":item.state===2?"●":"－";
-    state.addEventListener("click",()=>{
-      otherTasks[i].state=((otherTasks[i].state||0)+1)%3;
-      save(); renderOther();
-    });
-    const del=document.createElement("button");
-    del.className="other-delete"; del.textContent="×";
-    del.addEventListener("click",()=>{
-      if(confirm(`「${item.name||"この項目"}」を削除しますか？`)){
-        otherTasks.splice(i,1); save(); renderOther();
-      }
-    });
-    row.append(name,state,del); otherList.appendChild(row);
-  });
-}
-addOtherBtn.addEventListener("click",()=>{
-  const name=prompt("追加する項目名","表紙");
-  if(name===null) return;
-  const v=name.trim();
-  if(!v) return;
-  otherTasks.push({name:v,state:0});
-  save(); renderOther();
-});
-
 load();syncRangeUI();save();render();
-renderOther();
 </script>
 </body>
 </html>

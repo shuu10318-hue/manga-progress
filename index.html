@@ -121,11 +121,71 @@ button.state-done{
   border-color:#171717 !important;
 }
 
+
+/* Multi-project v2 */
+.top-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:20px}
+.top-title h1{margin:0}
+.project-list-button,.project-add-button,.project-open-button,.project-cancel-button,.project-create-button{
+  min-height:42px;border:1px solid var(--border);border-radius:9px;background:#fff;font-weight:700
+}
+.project-list-button{padding:0 13px;font-size:12px}
+#projectHome{max-width:520px;margin:auto;padding:18px 14px 40px}
+.project-home-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
+.project-home-head h1{margin:0;font-size:22px}
+.project-add-button{padding:0 14px;background:#222;color:#fff;border-color:#222}
+.project-item{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+.project-item-main{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.project-item-title{font-weight:800;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-item-meta{font-size:11px;color:var(--muted);margin-top:5px}
+.project-open-button{padding:0 14px;flex:none}
+.project-empty{background:#fff;border:1px dashed var(--border);border-radius:14px;padding:28px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7}
+.project-actions{display:flex;justify-content:flex-end;margin-top:9px}
+.project-delete-button{border:0;background:transparent;color:#999;font-size:11px;padding:5px}
+.project-modal{position:fixed;inset:0;background:rgba(0,0,0,.32);display:none;align-items:flex-end;justify-content:center;z-index:1100}
+.project-modal.open{display:flex}
+.project-sheet{width:min(520px,100%);background:#fff;border-radius:18px 18px 0 0;padding:18px 14px 24px}
+.project-sheet h2{font-size:18px;margin:0 0 14px}
+.project-sheet .page-range{margin-top:10px}
+.project-modal-actions{display:grid;grid-template-columns:1fr 1.7fr;gap:9px;margin-top:16px}
+.project-cancel-button,.project-create-button{height:44px}
+.project-create-button{background:#222;color:#fff;border-color:#222}
+.project-backup-note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6}
+
+
+/* Memo list v2 */
+.memo-list-button{min-height:42px;padding:0 13px;border:1px solid var(--border);border-radius:9px;background:#fff;font-weight:700;font-size:12px}
+.top-actions{display:flex;gap:7px;flex:none}
+.memo-modal{position:fixed;inset:0;background:rgba(0,0,0,.32);display:none;align-items:flex-end;justify-content:center;z-index:1200}
+.memo-modal.open{display:flex}
+.memo-sheet{width:min(520px,100%);max-height:78vh;background:#fff;border-radius:18px 18px 0 0;padding:16px 14px 22px;display:flex;flex-direction:column}
+.memo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.memo-head h2{font-size:18px;margin:0}
+.memo-close{border:0;background:#f1f1f1;border-radius:9px;padding:8px 12px;font-weight:700}
+.memo-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.memo-filter{border:1px solid var(--border);background:#fff;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:700}
+.memo-filter.active{background:#222;color:#fff;border-color:#222}
+.memo-scroll{overflow:auto;-webkit-overflow-scrolling:touch}
+.memo-item{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:#fff}
+.memo-page{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:1px solid rgba(0,0,0,.08)}
+.memo-text{font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.memo-jump{border:0;background:#f1f1f1;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700}
+.memo-empty{text-align:center;color:var(--muted);font-size:12px;padding:30px 10px}
+
 </style>
 </head>
 <body>
-<div class="app">
-<h1>漫画制作進捗</h1>
+
+<div id="projectHome" style="display:none">
+  <div class="project-home-head">
+    <h1>作品一覧</h1>
+    <button id="newProjectButton" class="project-add-button">＋ 新しい作品</button>
+  </div>
+  <div id="projectList"></div>
+  <div class="project-backup-note">作品ごとの進捗・付箋・作業履歴は端末内に自動保存されます。</div>
+</div>
+
+<div class="app" id="editorApp" style="display:none">
+<div class="top-title"><h1>漫画制作進捗</h1><div class="top-actions"><button id="memoListButton" class="memo-list-button">メモ一覧</button><button id="backToProjects" class="project-list-button">作品一覧</button></div></div>
 <div class="card">
 <div class="label">作品名</div><input id="title" value="ばちぼこゾンビランド" placeholder="作品名">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;margin-bottom:7px">
@@ -170,10 +230,50 @@ button.state-done{
 <button id="importBackup" class="backup-button">📂 復元</button>
 </div>
 <input id="backupFile" type="file" accept=".json,application/json" hidden>
-<div class="backup-note">作品名・ページ数・全工程の進捗・作業履歴をJSONに保存します。</div>
+<div class="backup-note">全作品のページ数・進捗・付箋・作業履歴を1つのJSONに保存します。</div>
 <div id="backupStatus" style="display:none;margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);font-size:12px;line-height:1.55;word-break:break-all"></div>
 </div>
 <div class="saved" id="saveMessage">変更は自動保存されます</div>
+</div>
+
+
+
+<div id="memoListModal" class="memo-modal">
+  <div class="memo-sheet">
+    <div class="memo-head">
+      <h2>メモ一覧</h2>
+      <button id="closeMemoList" class="memo-close">閉じる</button>
+    </div>
+    <div class="memo-filters">
+      <button class="memo-filter active" data-filter="all">すべて</button>
+      <button class="memo-filter" data-filter="#ef9a9a">赤</button>
+      <button class="memo-filter" data-filter="#f4dc8a">黄</button>
+      <button class="memo-filter" data-filter="#90caf9">青</button>
+      <button class="memo-filter" data-filter="#a5d6a7">緑</button>
+    </div>
+    <div id="memoListBody" class="memo-scroll"></div>
+  </div>
+</div>
+
+<div id="projectModal" class="project-modal">
+  <div class="project-sheet">
+    <h2>新しい作品</h2>
+    <div class="label">作品名</div>
+    <input id="newProjectTitle" value="" placeholder="作品名">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:7px">
+      <div class="label" style="margin:0">制作ページ</div>
+      <div id="newProjectTotal" style="font-size:11px;color:var(--muted)">全1P</div>
+    </div>
+    <div class="page-range">
+      <div><input id="newProjectStart" type="number" min="1" max="999" value="1"><span>P</span></div>
+      <b>〜</b>
+      <div><input id="newProjectEnd" type="number" min="1" max="999" value="1"><span>P</span></div>
+    </div>
+    <div class="project-modal-actions">
+      <button id="cancelNewProject" class="project-cancel-button">キャンセル</button>
+      <button id="createNewProject" class="project-create-button">作成</button>
+    </div>
+  </div>
 </div>
 
 <div id="stickyModal" class="sticky-modal">
@@ -195,7 +295,10 @@ button.state-done{
 </div>
 
 <script>
-const STORAGE_KEY="manga-progress-v1";
+const STORAGE_KEY="manga-progress-v1"; // 旧版データ。移行元として残す
+const PROJECTS_KEY="manga-progress-projects-v2";
+let projectStore={version:2,activeProjectId:null,projects:{}};
+let currentProjectId=null;
 const stages=["ネーム","ペン","背景","トーン","写植"];
 let totalPages=48,startPage=1,currentView=0,progress=createProgress(48);
 let history={day:"",baselineDone:0,days:{}};
@@ -239,31 +342,163 @@ function rollHistory(){
 }
 function todayDelta(){rollHistory();return doneCount()-history.baselineDone}
 function todayWeightedDelta(){rollHistory();return weightedCount()-history.baselineWeighted}
-function save(){
+function makeProjectData(){
   rollHistory();
-  const data={title:document.getElementById("title").value,totalPages,startPage,progress,history,pageNotes};
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  return {
+    title:document.getElementById("title").value,
+    totalPages,startPage,
+    progress:progress.map(r=>[...r]),
+    history:JSON.parse(JSON.stringify(history)),
+    pageNotes:JSON.parse(JSON.stringify(pageNotes))
+  };
+}
+function freshProjectData(title="新しい作品",sp=1,ep=1){
+  const n=Math.max(1,Math.min(300,ep-sp+1));
+  const p=createProgress(n);
+  return {
+    title,totalPages:n,startPage:sp,progress:p,
+    history:{day:localDate(),baselineDone:0,baselineWeighted:0,weightedDays:{},days:{}},
+    pageNotes:{}
+  };
+}
+function newProjectId(){
+  return "p_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8);
+}
+function persistProjectStore(){
+  localStorage.setItem(PROJECTS_KEY,JSON.stringify(projectStore));
+}
+function save(){
+  if(!currentProjectId)return;
+  projectStore.projects[currentProjectId]=makeProjectData();
+  projectStore.activeProjectId=currentProjectId;
+  persistProjectStore();
   const m=document.getElementById("saveMessage");
   m.textContent="保存しました ✓";
   clearTimeout(save.timer);
   save.timer=setTimeout(()=>m.textContent="変更は自動保存されます",1200);
 }
-function load(){
+function normalizeProjectData(s){
+  let n=Number.isInteger(s?.totalPages)&&s.totalPages>0?Math.min(300,s.totalPages):48;
+  let sp=Number.isInteger(s?.startPage)&&s.startPage>0?s.startPage:1;
+  let pg=Array.from({length:n},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(s?.progress?.[p]?.[i])?s.progress[p][i]:0));
+  return {
+    title:typeof s?.title==="string"&&s.title?s.title:"無題",
+    totalPages:n,startPage:sp,progress:pg,
+    history:s?.history&&typeof s.history==="object"?s.history:null,
+    pageNotes:s?.pageNotes&&typeof s.pageNotes==="object"?s.pageNotes:{}
+  };
+}
+function migrateLegacyIfNeeded(){
+  if(localStorage.getItem(PROJECTS_KEY))return;
+  let legacy=null;
+  try{ legacy=JSON.parse(localStorage.getItem(STORAGE_KEY)); }catch(e){}
+  projectStore={version:2,activeProjectId:null,projects:{}};
+  if(legacy&&Array.isArray(legacy.progress)){
+    const id=newProjectId();
+    const p=normalizeProjectData(legacy);
+    // 履歴は作品を開いた時に現在の進捗に合わせて正規化する
+    projectStore.projects[id]=p;
+    projectStore.activeProjectId=id;
+  }
+  persistProjectStore();
+}
+function loadProjectStore(){
+  migrateLegacyIfNeeded();
   try{
-    const s=JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if(!s){history={day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};return}
-    if(s.title)document.getElementById("title").value=s.title;
-    if(Number.isInteger(s.totalPages)&&s.totalPages>0)totalPages=s.totalPages;
-    if(Number.isInteger(s.startPage)&&s.startPage>0)startPage=s.startPage;
-    if(Array.isArray(s.progress))progress=Array.from({length:totalPages},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(s.progress?.[p]?.[i])?s.progress[p][i]:0));
-    pageNotes=(s.pageNotes&&typeof s.pageNotes==="object")?s.pageNotes:{};
-    history=normalizeHistory(s.history);
-    rollHistory();
-  }catch(e){history={day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}}}
+    const raw=JSON.parse(localStorage.getItem(PROJECTS_KEY));
+    if(raw&&raw.projects&&typeof raw.projects==="object"){
+      projectStore={version:2,activeProjectId:raw.activeProjectId||null,projects:{}};
+      Object.entries(raw.projects).forEach(([id,p])=>{
+        if(p&&Array.isArray(p.progress))projectStore.projects[id]=normalizeProjectData(p);
+      });
+      if(!projectStore.projects[projectStore.activeProjectId])projectStore.activeProjectId=null;
+      return;
+    }
+  }catch(e){}
+  projectStore={version:2,activeProjectId:null,projects:{}};
+  persistProjectStore();
+}
+function applyProjectData(s){
+  const p=normalizeProjectData(s);
+  totalPages=p.totalPages;
+  startPage=p.startPage;
+  progress=p.progress;
+  pageNotes=p.pageNotes;
+  document.getElementById("title").value=p.title;
+  history=p.history?normalizeHistory(p.history):{day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
+  rollHistory();
+  currentView=0;
+  syncRangeUI();
+}
+function openProject(id){
+  if(!projectStore.projects[id])return;
+  currentProjectId=id;
+  projectStore.activeProjectId=id;
+  applyProjectData(projectStore.projects[id]);
+  persistProjectStore();
+  document.getElementById("projectHome").style.display="none";
+  document.getElementById("editorApp").style.display="";
+  render();
+}
+function showProjectHome(){
+  if(currentProjectId)save();
+  currentProjectId=null;
+  document.getElementById("editorApp").style.display="none";
+  document.getElementById("projectHome").style.display="";
+  renderProjectList();
+}
+function projectPercent(p){
+  const vals=(p.progress||[]).flat();
+  if(!vals.length)return 0;
+  return Math.round(vals.filter(v=>v===2).length/vals.length*100);
+}
+function renderProjectList(){
+  const list=document.getElementById("projectList");
+  list.innerHTML="";
+  const entries=Object.entries(projectStore.projects);
+  if(!entries.length){
+    list.innerHTML='<div class="project-empty">まだ作品がありません。<br>「＋ 新しい作品」から作成できます。</div>';
+    return;
+  }
+  entries.forEach(([id,p])=>{
+    const item=document.createElement("div");
+    item.className="project-item";
+    const donePages=(p.progress||[]).filter(r=>Array.isArray(r)&&r.every(v=>v===2)).length;
+    item.innerHTML=`<div class="project-item-main">
+      <div style="min-width:0">
+        <div class="project-item-title"></div>
+        <div class="project-item-meta">全${p.totalPages}P ・ 完成 ${donePages}P ・ 全工程 ${projectPercent(p)}%</div>
+      </div>
+      <button class="project-open-button">開く</button>
+    </div>
+    <div class="project-actions"><button class="project-delete-button">この作品を削除</button></div>`;
+    item.querySelector(".project-item-title").textContent=p.title||"無題";
+    item.querySelector(".project-open-button").onclick=()=>openProject(id);
+    item.querySelector(".project-delete-button").onclick=()=>{
+      const name=p.title||"無題";
+      if(!confirm(`「${name}」を削除しますか？\nこの操作は元に戻せません。`))return;
+      delete projectStore.projects[id];
+      if(projectStore.activeProjectId===id)projectStore.activeProjectId=null;
+      persistProjectStore();
+      renderProjectList();
+    };
+    list.appendChild(item);
+  });
+}
+function load(){
+  loadProjectStore();
 }
 function makeBackup(){
-  rollHistory();
-  return {app:"manga-progress",version:4,exportedAt:new Date().toISOString(),title:document.getElementById("title").value,totalPages,startPage,progress,history,pageNotes};
+  if(currentProjectId)projectStore.projects[currentProjectId]=makeProjectData();
+  persistProjectStore();
+  return {
+    app:"manga-progress",
+    version:5,
+    type:"multi-project",
+    exportedAt:new Date().toISOString(),
+    projects:projectStore.projects,
+    activeProjectId:projectStore.activeProjectId
+  };
 }
 function safeFileName(name){return (name||"漫画制作進捗").replace(/[\/:*?"<>|]/g,"_").trim()||"漫画制作進捗"}
 function showBackupStatus(message){
@@ -272,29 +507,38 @@ function showBackupStatus(message){
 function exportBackup(){
   try{
     const data=makeBackup(),date=localDate();
-    const fileName=`${safeFileName(data.title)}_backup_${date}.json`;
+    const fileName=`漫画制作進捗_全作品_backup_${date}.json`;
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
     const url=URL.createObjectURL(blob),link=document.createElement("a");
     link.href=url;link.download=fileName;link.style.display="none";
     document.body.appendChild(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),5000);
-    showBackupStatus(`✅ バックアップを保存しました。<br><b>${fileName}</b><br><span style="color:var(--muted)">Chromeのダウンロード一覧または端末の「Downloads」を確認してください。</span>`);
+    showBackupStatus(`✅ 全作品のバックアップを保存しました。<br><b>${fileName}</b><br><span style="color:var(--muted)">Chromeのダウンロード一覧または端末の「Downloads」を確認してください。</span>`);
   }catch(err){
     showBackupStatus(`❌ バックアップを保存できませんでした。<br><span style="color:var(--muted)">${String(err.message||err)}</span>`);
   }
 }
 function restoreBackup(data){
+  // v5: 全作品バックアップ
+  if(data&&data.type==="multi-project"&&data.projects&&typeof data.projects==="object"){
+    const restored={};
+    Object.entries(data.projects).forEach(([id,p])=>{
+      if(p&&Array.isArray(p.progress))restored[id]=normalizeProjectData(p);
+    });
+    if(!Object.keys(restored).length)throw new Error("invalid");
+    projectStore={version:2,activeProjectId:null,projects:restored};
+    persistProjectStore();
+    showProjectHome();
+    return "all";
+  }
+  // v4以前: 1作品バックアップは新しい作品として追加
   if(!data||!Number.isInteger(data.totalPages)||data.totalPages<1||data.totalPages>300||!Array.isArray(data.progress))throw new Error("invalid");
-  totalPages=data.totalPages;
-  startPage=Number.isInteger(data.startPage)&&data.startPage>0?data.startPage:1;
-  progress=Array.from({length:totalPages},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(data.progress?.[p]?.[i])?data.progress[p][i]:0));
-  document.getElementById("title").value=typeof data.title==="string"?data.title:"";
-  pageNotes=(data.pageNotes&&typeof data.pageNotes==="object")?data.pageNotes:{};
-  history=data.history?normalizeHistory(data.history):{day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
-  rollHistory();
-  currentView=0;
-  syncRangeUI();
-  save();render();
+  const id=newProjectId();
+  projectStore.projects[id]=normalizeProjectData(data);
+  projectStore.activeProjectId=id;
+  persistProjectStore();
+  openProject(id);
+  return "single";
 }
 function resizeProgress(n){
   n=Math.max(1,Math.min(300,Number(n)||48));
@@ -450,12 +694,106 @@ document.getElementById("importBackup").addEventListener("click",()=>document.ge
 document.getElementById("backupFile").addEventListener("change",async e=>{
   const file=e.target.files?.[0];if(!file)return;
   try{
-    const data=JSON.parse(await file.text());restoreBackup(data);
-    showBackupStatus(`✅ バックアップを復元しました。<br><b>${file.name}</b>`);
+    const data=JSON.parse(await file.text());
+    const kind=restoreBackup(data);
+    showBackupStatus(kind==="all"
+      ?`✅ 全作品のバックアップを復元しました。<br><b>${file.name}</b>`
+      :`✅ 1作品を新しいプロジェクトとして復元しました。<br><b>${file.name}</b>`);
   }catch(err){showBackupStatus("❌ このバックアップファイルは読み込めませんでした。")}
   e.target.value="";
 });
-load();syncRangeUI();save();render();
+
+
+let memoListFilter="all";
+function renderMemoList(){
+  const body=document.getElementById("memoListBody");
+  body.innerHTML="";
+  const entries=Object.entries(pageNotes||{})
+    .map(([key,note])=>{
+      const page=Number(key);
+      const index=page-startPage;
+      return {index,page,note};
+    })
+    .filter(x=>Number.isInteger(x.page)&&x.index>=0&&x.index<totalPages&&x.note&&typeof x.note==="object")
+    .filter(x=>memoListFilter==="all"||x.note.color===memoListFilter)
+    .sort((a,b)=>a.page-b.page);
+  if(!entries.length){
+    body.innerHTML='<div class="memo-empty">該当するメモはありません。</div>';
+    return;
+  }
+  entries.forEach(({index,page,note})=>{
+    const row=document.createElement("div");
+    row.className="memo-item";
+    const pg=document.createElement("div");
+    pg.className="memo-page";
+    pg.style.background=note.color||"#f4dc8a";
+    pg.textContent=page+"P";
+    const tx=document.createElement("div");
+    tx.className="memo-text";
+    tx.textContent=(note.text||"").trim()||"（メモ本文なし）";
+    const jump=document.createElement("button");
+    jump.className="memo-jump";
+    jump.textContent="移動";
+    jump.onclick=()=>{
+      if(index<0||index>=totalPages)return;
+      currentView=Math.floor(index/12);
+      document.getElementById("memoListModal").classList.remove("open");
+      render();
+      const pages=document.getElementById("pages");
+      if(pages)pages.scrollIntoView({behavior:"smooth",block:"start"});
+    };
+    row.append(pg,tx,jump);
+    body.appendChild(row);
+  });
+}
+document.getElementById("memoListButton").onclick=()=>{
+  memoListFilter="all";
+  document.querySelectorAll(".memo-filter").forEach(b=>b.classList.toggle("active",b.dataset.filter==="all"));
+  renderMemoList();
+  document.getElementById("memoListModal").classList.add("open");
+};
+document.getElementById("closeMemoList").onclick=()=>document.getElementById("memoListModal").classList.remove("open");
+document.getElementById("memoListModal").onclick=e=>{if(e.target.id==="memoListModal")e.currentTarget.classList.remove("open")};
+document.querySelectorAll(".memo-filter").forEach(btn=>btn.onclick=()=>{
+  memoListFilter=btn.dataset.filter;
+  document.querySelectorAll(".memo-filter").forEach(b=>b.classList.toggle("active",b===btn));
+  renderMemoList();
+});
+
+document.getElementById("backToProjects").onclick=showProjectHome;
+document.getElementById("newProjectButton").onclick=()=>{
+  document.getElementById("newProjectTitle").value="";
+  document.getElementById("newProjectStart").value=1;
+  document.getElementById("newProjectEnd").value=1;
+  document.getElementById("newProjectTotal").textContent="全1P";
+  document.getElementById("projectModal").classList.add("open");
+  setTimeout(()=>document.getElementById("newProjectTitle").focus(),50);
+};
+document.getElementById("cancelNewProject").onclick=()=>document.getElementById("projectModal").classList.remove("open");
+document.getElementById("projectModal").onclick=e=>{if(e.target.id==="projectModal")e.currentTarget.classList.remove("open")};
+function updateNewProjectTotal(){
+  let a=Math.max(1,Math.min(999,Number(document.getElementById("newProjectStart").value)||1));
+  let b=Math.max(a,Math.min(999,Number(document.getElementById("newProjectEnd").value)||a));
+  document.getElementById("newProjectTotal").textContent=`全${b-a+1}P`;
+}
+document.getElementById("newProjectStart").addEventListener("input",updateNewProjectTotal);
+document.getElementById("newProjectEnd").addEventListener("input",updateNewProjectTotal);
+document.getElementById("createNewProject").onclick=()=>{
+  const title=document.getElementById("newProjectTitle").value.trim()||"無題";
+  let a=Math.max(1,Math.min(999,Number(document.getElementById("newProjectStart").value)||1));
+  let b=Math.max(a,Math.min(999,Number(document.getElementById("newProjectEnd").value)||a));
+  if(b-a+1>300){alert("1作品300ページまでです。");return;}
+  const id=newProjectId();
+  projectStore.projects[id]=freshProjectData(title,a,b);
+  projectStore.activeProjectId=id;
+  persistProjectStore();
+  document.getElementById("projectModal").classList.remove("open");
+  openProject(id);
+};
+
+load();
+showProjectHome();
+
 
 // --- Smooth swipe navigation prototype ---
 (function(){

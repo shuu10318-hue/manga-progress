@@ -1294,7 +1294,7 @@ function renderFoldersAndFilter(){
  if(!currentFolderId){
    Object.entries(projectStore.folders).forEach(([fid,f])=>{
      const el=document.createElement("div");el.className="folder-item";el.dataset.folderId=fid;el.dataset.orderKey="f:"+fid;
-     el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon">📁</span> ${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</div><div class="folder-meta">${folderCount(fid)}作品</div></div></div>`;
+     el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon">📁</span> ${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</div><div class="folder-meta">${folderCount(fid)}${languageSettings?.language==="en"?" projects":"作品"}</div></div></div>`;
      const openFolder=()=>{
        currentFolderId=fid;
        renderFoldersAndFilter();

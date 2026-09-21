@@ -1805,9 +1805,15 @@ setTimeout(refreshWholeLanguage,0);
 
 /* ---- Runtime language-state fix + settings separation ---- */
 const STATIC_JA_SNAPSHOT=new Map();
+const LANGUAGE_DYNAMIC_SELECTOR="#startedPercent,#donePercent,#completePages,#overallRingPercent,#stageProgress,#historyCard,#pages,#rangeText,#pageIndicator,#forecastText,#todayCount,#weekCount,#dailyAverage";
+function isLanguageDynamicNode(el){
+ return !!el?.closest?.(LANGUAGE_DYNAMIC_SELECTOR);
+}
 function captureJapaneseUi(){
  document.querySelectorAll("body *").forEach(el=>{
-   if(el.children.length===0 && !el.matches("script,style,input,textarea,option")){
+   // Never snapshot live project values. In Japanese mode the old snapshot restore
+   // was writing startup values such as 0% / 0P back over freshly rendered data.
+   if(!isLanguageDynamicNode(el) && el.children.length===0 && !el.matches("script,style,input,textarea,option")){
      const s=el.textContent.trim();
      if(s) STATIC_JA_SNAPSHOT.set(el,s);
    }
@@ -1818,7 +1824,7 @@ function captureJapaneseUi(){
 }
 function restoreJapaneseStaticUi(){
  STATIC_JA_SNAPSHOT.forEach((txt,el)=>{
-   if(el?.isConnected && el.children.length===0) el.textContent=txt;
+   if(el?.isConnected && !isLanguageDynamicNode(el) && el.children.length===0) el.textContent=txt;
  });
  document.querySelectorAll("[data-ja-placeholder]").forEach(el=>el.setAttribute("placeholder",el.dataset.jaPlaceholder));
  document.title="漫画制作進捗";
@@ -1883,8 +1889,10 @@ document.addEventListener("click",()=>{
    if(languageSettings.language==="en"){
      translateExactText(document);translateUiPatterns(document);
    }else{
-     // Dynamic renderers use Japanese source strings; restore any old English static nodes.
+     // Restore labels only, then redraw live project values. Dynamic values are
+     // explicitly excluded from the Japanese snapshot above.
      restoreJapaneseStaticUi();
+     if(currentProjectId && projectStore.projects[currentProjectId]) updateSummary();
    }
  },0);
 },true);

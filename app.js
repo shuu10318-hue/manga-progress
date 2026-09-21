@@ -617,7 +617,7 @@ function renderPages(){
       b.classList.toggle("state-done",progress[p][s]===2);
       b.onclick=()=>{
         if(Date.now()<suppressCellClickUntil)return;
-        progress[p][s]=(progress[p][s]+1)%3;setCellVisual(b,progress[p][s]);save();updateSummary()
+        progress[p][s]=(progress[p][s]+1)%3;setCellVisual(b,progress[p][s]);save();requestAnimationFrame(()=>updateSummary())
       };
       row.appendChild(b);
     }

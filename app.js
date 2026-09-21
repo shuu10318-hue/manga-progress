@@ -291,6 +291,11 @@ function openProject(id){
   render();
   renderProjectBreadcrumb();
   saveViewState("project");
+  // Android/Chrome: restored project data can finish binding after the first paint.
+  // Re-sync only the visual summary on the next frame; storage/touch logic is untouched.
+  requestAnimationFrame(()=>{
+    if(currentProjectId===id) updateSummary();
+  });
 }
 function showProjectHome(){
   if(currentProjectId)save();

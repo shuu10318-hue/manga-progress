@@ -464,8 +464,7 @@ function updateSummary(){
   startedPercent.textContent=sp+"%";donePercent.textContent=dp+"%";
   const overallRing=document.getElementById("overallRing");
   if(overallRing){
-    overallRing.style.setProperty("--started-p",sp+"%");
-    overallRing.style.setProperty("--done-p",dp+"%");
+    overallRing.style.background=`conic-gradient(var(--done) 0 ${dp}%,var(--started) ${dp}% ${sp}%,#eceef1 ${sp}% 100%)`;
   }
   completePages.textContent=`完成 ${progress.filter(r=>r.every(v=>v===2)).length} / ${totalPages}P`;
   renderStages();renderHistory();

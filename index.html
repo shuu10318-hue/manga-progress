@@ -290,6 +290,43 @@ body.project-reorder-mode .project-item::before{content:none!important}
 .folder-sheet h3{margin:0 0 12px}.folder-sheet input{width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--border);border-radius:9px;font-size:16px}
 .folder-sheet-actions{display:flex;gap:8px;margin-top:12px}.folder-sheet-actions button{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:#fff;font-weight:700}
 </style>
+<style>
+.stage-editor-list{display:flex;flex-direction:column;gap:7px;margin-top:7px}
+.stage-editor-row{display:grid;grid-template-columns:minmax(0,1fr) 38px 38px 38px;gap:6px;align-items:center}
+.stage-editor-row input{min-width:0;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font:inherit;box-sizing:border-box}
+.stage-mini-button,.stage-add-button{border:1px solid var(--border);background:#fff;border-radius:8px;font-weight:700}
+.stage-mini-button{width:38px;height:38px;padding:0}
+.stage-mini-button.danger{color:#a44}
+.stage-add-button{width:100%;height:40px;margin-top:8px}
+.stage-add-button:disabled{opacity:.4}
+.stage-editor-note{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5}
+.table-head,.page-row{grid-template-columns:42px repeat(var(--stage-count,5),minmax(0,1fr))!important}
+</style>
+<style>
+/* 工程数に合わせて、見出しと実際のマスを同じ列数で描画 */
+#tableHead,
+#pages .page-row{
+  grid-template-columns:25px repeat(var(--stage-count,5),minmax(0,1fr))!important;
+}
+</style>
+<style>
+.new-stage-toggle{
+  width:100%;min-height:44px;margin-top:14px;padding:0 4px;
+  border:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:transparent;display:flex;align-items:center;justify-content:space-between;
+  font-weight:700;text-align:left;
+}
+.new-stage-toggle span:last-child{font-size:18px;color:var(--muted);transition:transform .18s ease}
+.new-stage-toggle.open span:last-child{transform:rotate(180deg)}
+.new-stage-panel{display:none;padding:10px 0 2px}
+.new-stage-panel.open{display:block}
+</style>
+<style>
+#projectHome .project-item,
+#projectHome .folder-item{cursor:pointer}
+#projectHome .project-item:active,
+#projectHome .folder-item:active{background:#fafafa}
+</style>
 </head>
 <body>
 
@@ -371,7 +408,7 @@ body.project-reorder-mode .project-item::before{content:none!important}
 <div class="card"><div class="section-title">工程別進捗</div><div id="stageProgress"></div></div>
 <div class="card">
 <div class="table-toolbar"><div style="display:flex;align-items:center"><div class="section-title" style="margin:0">工程表</div><button id="helpButton" class="help-fab" type="button" aria-label="使い方">?</button></div><div id="range" class="range"></div></div>
-<div class="table-head"><div></div><div class="head">ネーム</div><div class="head">ペン</div><div class="head">背景</div><div class="head">トーン</div><div class="head">写植</div></div>
+<div id="tableHead" class="table-head"></div>
 <div id="pages"></div>
 <div class="navigation"><button id="prev" class="nav-button">← 前</button><div id="navPage" class="nav-page"></div><button id="next" class="nav-button">次 →</button></div>
 </div>
@@ -440,6 +477,10 @@ body.project-reorder-mode .project-item::before{content:none!important}
     <input id="editProjectCreationStartDate" type="date">
     <div class="label" style="margin-top:14px">締切予定日</div>
     <input id="editProjectDeadline" type="date">
+    <div class="label" style="margin-top:14px">工程設定</div>
+    <div id="stageEditorList" class="stage-editor-list"></div>
+    <button id="stageAddButton" class="stage-add-button" type="button">＋ 工程を追加</button>
+    <div class="stage-editor-note">工程名の変更・並び替え・追加・削除（最大8工程）</div>
     <div class="project-modal-actions">
       <button id="cancelEditProject" class="project-cancel-button">キャンセル</button>
       <button id="saveEditProject" class="project-create-button">保存</button>
@@ -465,6 +506,14 @@ body.project-reorder-mode .project-item::before{content:none!important}
     <input id="newProjectCreationStartDate" type="date">
     <div class="label" style="margin-top:14px">締切予定日</div>
     <input id="newProjectDeadline" type="date">
+    <button id="newStageToggle" class="new-stage-toggle" type="button">
+      <span>工程をカスタマイズ</span><span id="newStageChevron">⌄</span>
+    </button>
+    <div id="newStagePanel" class="new-stage-panel">
+      <div id="newStageEditorList" class="stage-editor-list"></div>
+      <button id="newStageAddButton" class="stage-add-button" type="button">＋ 工程を追加</button>
+      <div class="stage-editor-note">変更しなければ「ネーム・ペン・背景・トーン・写植」で作成されます</div>
+    </div>
     <div class="project-modal-actions">
       <button id="cancelNewProject" class="project-cancel-button">キャンセル</button>
       <button id="createNewProject" class="project-create-button">作成</button>
@@ -504,12 +553,13 @@ const STORAGE_KEY="manga-progress-v1"; // 旧版データ。移行元として�
 const PROJECTS_KEY="manga-progress-projects-v2";
 let projectStore={version:2,activeProjectId:null,projects:{}};
 let currentProjectId=null;
-const stages=["ネーム","ペン","背景","トーン","写植"];
+const DEFAULT_STAGES=["ネーム","ペン","背景","トーン","写植"];
+let stages=[...DEFAULT_STAGES];
 let totalPages=48,startPage=1,currentView=0,progress=createProgress(48);
 let history={day:"",baselineDone:0,days:{}};
 let pageNotes={};
 
-function createProgress(n){return Array.from({length:n},()=>Array(5).fill(0))}
+function createProgress(n,stageCount=stages.length){return Array.from({length:n},()=>Array(stageCount).fill(0))}
 function localDate(d=new Date()){
   const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${day}`;
@@ -555,6 +605,7 @@ function makeProjectData(){
     deadline:document.getElementById("deadlineInput").value||"",
     totalPages,startPage,
     progress:progress.map(r=>[...r]),
+    stages:[...stages],
     history:JSON.parse(JSON.stringify(history)),
     pageNotes:JSON.parse(JSON.stringify(pageNotes))
   };
@@ -563,7 +614,7 @@ function freshProjectData(title="新しい作品",sp=1,ep=1){
   const n=Math.max(1,Math.min(300,ep-sp+1));
   const p=createProgress(n);
   return {
-    title,creationStartDate:"",deadline:"",totalPages:n,startPage:sp,progress:p,folderId:null,
+    title,creationStartDate:"",deadline:"",totalPages:n,startPage:sp,progress:p,stages:[...DEFAULT_STAGES],folderId:null,
     history:{day:localDate(),baselineDone:0,baselineWeighted:0,weightedDays:{},days:{}},
     pageNotes:{}
   };
@@ -590,9 +641,13 @@ function save(){
 function normalizeProjectData(s){
   let n=Number.isInteger(s?.totalPages)&&s.totalPages>0?Math.min(300,s.totalPages):48;
   let sp=Number.isInteger(s?.startPage)&&s.startPage>0?s.startPage:1;
-  let pg=Array.from({length:n},(_,p)=>Array.from({length:5},(_,i)=>[0,1,2].includes(s?.progress?.[p]?.[i])?s.progress[p][i]:0));
+const projectStages=Array.isArray(s?.stages)&&s.stages.length
+    ? s.stages.map(x=>String(x||"工程").trim()||"工程").slice(0,8)
+    : [...DEFAULT_STAGES];
+  let pg=Array.from({length:n},(_,p)=>Array.from({length:projectStages.length},(_,i)=>[0,1,2].includes(s?.progress?.[p]?.[i])?s.progress[p][i]:0));
   return {
     title:typeof s?.title==="string"&&s.title?s.title:"無題",
+    stages:projectStages,
     creationStartDate:typeof s?.creationStartDate==="string"?s.creationStartDate:"",
     deadline:typeof s?.deadline==="string"?s.deadline:"",
     totalPages:n,startPage:sp,progress:pg,
@@ -643,6 +698,7 @@ function applyProjectData(s){
   totalPages=p.totalPages;
   startPage=p.startPage;
   progress=p.progress;
+  stages=[...(p.stages||DEFAULT_STAGES)];
   pageNotes=p.pageNotes;
   document.getElementById("title").value=p.title;
   document.getElementById("creationStartDateInput").value=p.creationStartDate||"";
@@ -706,13 +762,16 @@ function renderProjectList(){
       </div>
       <div class="project-item-actions">
         <button class="project-edit-button">編集</button>
-        <button class="project-open-button">開く</button>
       </div>
     </div>
     <div class="project-actions"><button class="project-delete-button">この作品を削除</button></div>`;
     item.querySelector(".project-item-title").textContent=p.title||"無題";
-    item.querySelector(".project-open-button").onclick=()=>openProject(id);
-    item.querySelector(".project-edit-button").onclick=()=>openProjectEdit(id);
+    item.addEventListener("click",e=>{
+      if(Date.now()<(window.__suppressMixedClickUntil||0))return;
+      if(e.target.closest("button,a,input,textarea,select,label"))return;
+      openProject(id);
+    });
+    item.querySelector(".project-edit-button").onclick=e=>{e.stopPropagation();openProjectEdit(id)};
     item.querySelector(".project-delete-button").onclick=()=>{
       const name=p.title||"無題";
       if(!confirm(`「${name}」を削除しますか？\nこの操作は元に戻せません。`))return;
@@ -943,7 +1002,7 @@ function renderPages(){
     if(note.color)num.style.background=note.color;
     num.onclick=()=>openSticky(actualPage);
     row.appendChild(num);
-    for(let s=0;s<5;s++){
+    for(let s=0;s<stages.length;s++){
       const b=document.createElement("button");b.className="progress-cell state"+progress[p][s];
       b.textContent="";
       b.dataset.pageIndex=String(p);
@@ -1047,7 +1106,7 @@ pages.addEventListener("touchmove",e=>{
 pages.addEventListener("touchend",finishPaint,{passive:true});
 pages.addEventListener("touchcancel",finishPaint,{passive:true});
 
-function render(){renderPages();updateSummary()}
+function render(){renderDynamicTableHead();renderPages();updateSummary()}
 prev.onclick=()=>{if(currentView>0){currentView--;renderPages()}};
 next.onclick=()=>{if(currentView<Math.ceil(totalPages/12)-1){currentView++;renderPages()}};
 function syncRangeUI(){
@@ -1063,7 +1122,7 @@ function applyPageRange(){
   const newProgress=[];
   for(let page=a;page<=b;page++){
     if(page>=oldStart&&page<=oldEnd) newProgress.push([...old[page-oldStart]]);
-    else newProgress.push(Array(5).fill(0));
+    else newProgress.push(Array(stages.length).fill(0));
   }
   startPage=a; totalPages=b-a+1; progress=newProgress; currentView=0;
   syncRangeUI(); save(); render();
@@ -1162,6 +1221,53 @@ document.querySelectorAll(".memo-filter").forEach(btn=>btn.onclick=()=>{
 });
 
 document.getElementById("backToProjects").onclick=showProjectHome;
+
+let newProjectStageDraft=[...DEFAULT_STAGES];
+function renderNewProjectStageEditor(){
+  const box=document.getElementById("newStageEditorList"); if(!box)return;
+  box.innerHTML="";
+  newProjectStageDraft.forEach((name,i)=>{
+    const row=document.createElement("div");row.className="stage-editor-row";
+    row.innerHTML=`<input type="text" maxlength="12" value="${escapeStageHtml(name)}" aria-label="工程名">
+      <button type="button" class="stage-mini-button" data-act="up">↑</button>
+      <button type="button" class="stage-mini-button" data-act="down">↓</button>
+      <button type="button" class="stage-mini-button danger" data-act="del">×</button>`;
+    const input=row.querySelector("input");
+    input.addEventListener("input",()=>newProjectStageDraft[i]=input.value);
+    row.querySelector('[data-act="up"]').onclick=()=>{
+      if(!i)return;
+      [newProjectStageDraft[i-1],newProjectStageDraft[i]]=[newProjectStageDraft[i],newProjectStageDraft[i-1]];
+      renderNewProjectStageEditor();
+    };
+    row.querySelector('[data-act="down"]').onclick=()=>{
+      if(i>=newProjectStageDraft.length-1)return;
+      [newProjectStageDraft[i+1],newProjectStageDraft[i]]=[newProjectStageDraft[i],newProjectStageDraft[i+1]];
+      renderNewProjectStageEditor();
+    };
+    row.querySelector('[data-act="del"]').onclick=()=>{
+      if(newProjectStageDraft.length<=1){alert("工程は1つ以上必要です。");return}
+      newProjectStageDraft.splice(i,1);renderNewProjectStageEditor();
+    };
+    box.appendChild(row);
+  });
+  document.getElementById("newStageAddButton").disabled=newProjectStageDraft.length>=8;
+}
+function resetNewProjectStages(){
+  newProjectStageDraft=[...DEFAULT_STAGES];
+  renderNewProjectStageEditor();
+  document.getElementById("newStagePanel").classList.remove("open");
+  document.getElementById("newStageToggle").classList.remove("open");
+}
+document.getElementById("newStageToggle").addEventListener("click",()=>{
+  document.getElementById("newStagePanel").classList.toggle("open");
+  document.getElementById("newStageToggle").classList.toggle("open");
+});
+document.getElementById("newStageAddButton").addEventListener("click",()=>{
+  if(newProjectStageDraft.length>=8)return;
+  newProjectStageDraft.push("新しい工程");
+  renderNewProjectStageEditor();
+});
+
 document.getElementById("newProjectButton").onclick=()=>{
   document.getElementById("newProjectTitle").value="";
   document.getElementById("newProjectStart").value=1;
@@ -1169,6 +1275,7 @@ document.getElementById("newProjectButton").onclick=()=>{
   document.getElementById("newProjectCreationStartDate").value="";
   document.getElementById("newProjectDeadline").value="";
   document.getElementById("newProjectTotal").textContent="全1P";
+  resetNewProjectStages();
   document.getElementById("projectModal").classList.add("open");
   setTimeout(()=>document.getElementById("newProjectTitle").focus(),50);
 };
@@ -1188,6 +1295,9 @@ document.getElementById("createNewProject").onclick=()=>{
   if(b-a+1>300){alert("1作品300ページまでです。");return;}
   const id=newProjectId();
   projectStore.projects[id]=freshProjectData(title,a,b);
+  const newStages=newProjectStageDraft.map((x,i)=>String(x||"").trim()||`工程${i+1}`);
+  projectStore.projects[id].stages=newStages;
+  projectStore.projects[id].progress=Array.from({length:b-a+1},()=>Array(newStages.length).fill(0));
   projectStore.projects[id].creationStartDate=document.getElementById("newProjectCreationStartDate").value||"";
   projectStore.projects[id].deadline=document.getElementById("newProjectDeadline").value||"";
   projectStore.projectOrder=[id,...(Array.isArray(projectStore.projectOrder)?projectStore.projectOrder:[]).filter(x=>x!==id)];
@@ -1258,6 +1368,63 @@ showProjectHome();
 })();
 
 
+
+// --- 工程カスタマイズ prototype ---
+let stageDraft=[];
+let stageDraftMeta=[];
+function escapeStageHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function initStageDraft(p){
+  const arr=Array.isArray(p?.stages)&&p.stages.length?p.stages:DEFAULT_STAGES;
+  stageDraft=[...arr];
+  stageDraftMeta=arr.map((_,i)=>({originalIndex:i}));
+}
+function renderStageEditor(){
+  const box=document.getElementById("stageEditorList"); if(!box)return;
+  box.innerHTML="";
+  stageDraft.forEach((name,i)=>{
+    const row=document.createElement("div"); row.className="stage-editor-row";
+    row.innerHTML=`<input type="text" maxlength="12" value="${escapeStageHtml(name)}" aria-label="工程名">
+      <button type="button" class="stage-mini-button" data-act="up" title="上へ">↑</button>
+      <button type="button" class="stage-mini-button" data-act="down" title="下へ">↓</button>
+      <button type="button" class="stage-mini-button danger" data-act="del" title="削除">×</button>`;
+    const input=row.querySelector("input");
+    input.addEventListener("input",()=>stageDraft[i]=input.value);
+    row.querySelector('[data-act="up"]').onclick=()=>{
+      if(!i)return;
+      [stageDraft[i-1],stageDraft[i]]=[stageDraft[i],stageDraft[i-1]];
+      [stageDraftMeta[i-1],stageDraftMeta[i]]=[stageDraftMeta[i],stageDraftMeta[i-1]];
+      renderStageEditor();
+    };
+    row.querySelector('[data-act="down"]').onclick=()=>{
+      if(i>=stageDraft.length-1)return;
+      [stageDraft[i+1],stageDraft[i]]=[stageDraft[i],stageDraft[i+1]];
+      [stageDraftMeta[i+1],stageDraftMeta[i]]=[stageDraftMeta[i],stageDraftMeta[i+1]];
+      renderStageEditor();
+    };
+    row.querySelector('[data-act="del"]').onclick=()=>{
+      if(stageDraft.length<=1){alert("工程は1つ以上必要です。");return}
+      if(!confirm(`「${stageDraft[i]||"この工程"}」を削除しますか？\nこの工程の全ページの進捗も削除されます。`))return;
+      stageDraft.splice(i,1); stageDraftMeta.splice(i,1); renderStageEditor();
+    };
+    box.appendChild(row);
+  });
+  const add=document.getElementById("stageAddButton");
+  if(add)add.disabled=stageDraft.length>=8;
+}
+document.getElementById("stageAddButton")?.addEventListener("click",()=>{
+  if(stageDraft.length>=8)return;
+  stageDraft.push("新しい工程");
+  stageDraftMeta.push({originalIndex:null});
+  renderStageEditor();
+});
+function renderDynamicTableHead(){
+  const head=document.getElementById("tableHead"); if(!head)return;
+  document.documentElement.style.setProperty("--stage-count",String(stages.length));
+  head.innerHTML="<div></div>"+stages.map(n=>`<div class="head">${escapeStageHtml(n)}</div>`).join("");
+}
+
 let editingProjectId=null;
 function updateEditProjectTotal(){
   const a=Math.max(1,Number(document.getElementById("editProjectStart").value)||1);
@@ -1267,6 +1434,8 @@ function updateEditProjectTotal(){
 function openProjectEdit(id){
   const p=projectStore.projects[id]; if(!p)return;
   editingProjectId=id;
+  initStageDraft(p);
+  renderStageEditor();
   document.getElementById("editProjectTitle").value=p.title||"";
   document.getElementById("editProjectStart").value=p.startPage||1;
   document.getElementById("editProjectEnd").value=(p.startPage||1)+(p.totalPages||1)-1;
@@ -1291,9 +1460,16 @@ document.getElementById("saveEditProject").addEventListener("click",()=>{
   const newEnd=Math.max(newStart,Number(document.getElementById("editProjectEnd").value)||newStart);
   const newTotal=newEnd-newStart+1;
   const oldStart=p.startPage||1, oldProgress=Array.isArray(p.progress)?p.progress:[];
+  const oldStages=Array.isArray(p.stages)&&p.stages.length?[...p.stages]:[...DEFAULT_STAGES];
+  const cleanedStages=stageDraft.map((x,i)=>String(x||"").trim()||`工程${i+1}`);
+  // Each draft item carries its original column index, so rename/reorder preserves the exact progress column.
+  const mapping=stageDraftMeta.map(x=>x.originalIndex);
+  p.stages=cleanedStages;
   p.progress=Array.from({length:newTotal},(_,i)=>{
     const oldIndex=(newStart+i)-oldStart;
-    return oldIndex>=0&&oldIndex<oldProgress.length?[...oldProgress[oldIndex]]:Array(5).fill(0);
+    if(oldIndex<0||oldIndex>=oldProgress.length)return Array(p.stages.length).fill(0);
+    const oldRow=oldProgress[oldIndex]||[];
+    return mapping.map(oi=>oi===null?0:(oldRow[oi]??0));
   });
   p.title=document.getElementById("editProjectTitle").value.trim()||"無題";
   p.startPage=newStart; p.totalPages=newTotal;
@@ -1479,9 +1655,10 @@ function renderFoldersAndFilter(){
  if(!currentFolderId){
    Object.entries(projectStore.folders).forEach(([fid,f])=>{
      const el=document.createElement("div");el.className="folder-item";el.dataset.folderId=fid;el.dataset.orderKey="f:"+fid;
-     el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon">📁</span> ${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</div><div class="folder-meta">${folderCount(fid)}作品</div></div><button class="folder-open" type="button">開く</button></div>`;
-     el.querySelector(".folder-open").addEventListener("click",e=>{
-       e.preventDefault();e.stopPropagation();
+     el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon">📁</span> ${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</div><div class="folder-meta">${folderCount(fid)}作品</div></div></div>`;
+     el.addEventListener("click",e=>{
+       if(Date.now()<(window.__suppressMixedClickUntil||0))return;
+       if(e.target.closest("button,a,input,textarea,select,label"))return;
        currentFolderId=fid;
        renderFoldersAndFilter();
      });
@@ -1721,10 +1898,16 @@ document.addEventListener("touchend",()=>{
    else list.append(drag);
  },{capture:true,passive:false});
  list.addEventListener("touchend",e=>{
+   // 通常タップでも長押し判定タイマーを必ず止める。
+   // フォルダを開いた後に遅れてバイブするのを防ぐ。
+   clearTimeout(hold);hold=null;
    if(!drag)return;
    e.stopImmediatePropagation(); finish();
  },{capture:true,passive:true});
- list.addEventListener("touchcancel",finish,{capture:true,passive:true});
+ list.addEventListener("touchcancel",e=>{
+   clearTimeout(hold);hold=null;
+   finish();
+ },{capture:true,passive:true});
  window.addEventListener("touchend",()=>{if(!drag)window.__mixedRootDragging=false},{passive:true});
  list.addEventListener("click",e=>{
    if(Date.now()<(window.__suppressMixedClickUntil||0)){

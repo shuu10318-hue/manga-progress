@@ -1806,8 +1806,11 @@ setTimeout(refreshWholeLanguage,0);
 /* ---- Runtime language-state fix + settings separation ---- */
 const STATIC_JA_SNAPSHOT=new Map();
 const LANGUAGE_DYNAMIC_SELECTOR="#startedPercent,#donePercent,#completePages,#overallRingPercent,#stageProgress,#historyCard,#pages,#rangeText,#pageIndicator,#forecastText,#todayCount,#weekCount,#dailyAverage";
+const LANGUAGE_DYNAMIC_IDS=new Set(["startedPercent","donePercent","completePages","overallRingPercent","stageProgress","historyCard","pages","rangeText","pageIndicator","forecastText","todayCount","weekCount","dailyAverage"]);
 function isLanguageDynamicNode(el){
- return !!el?.closest?.(LANGUAGE_DYNAMIC_SELECTOR);
+ if(!el)return false;
+ if(el.id && LANGUAGE_DYNAMIC_IDS.has(el.id))return true;
+ return !!el.closest?.(LANGUAGE_DYNAMIC_SELECTOR);
 }
 function captureJapaneseUi(){
  document.querySelectorAll("body *").forEach(el=>{

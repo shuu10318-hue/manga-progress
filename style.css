@@ -632,3 +632,9 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch}
   line-height:1.55;
   word-break:break-all;
 }
+
+/* 工程表の高さ：12P以下は実ページ数、12P以上は従来の固定高さ */
+#pages.short-project{
+  min-height:0!important;
+  height:auto!important;
+}

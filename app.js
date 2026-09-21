@@ -449,12 +449,12 @@ function restoreBackup(data){
 function resizeProgress(n){
   n=Math.max(1,Math.min(300,Number(n)||48));
   const old=progress;
-  progress=Array.from({length:n},(_,p)=>old[p]?[...old[p]]:Array(5).fill(0));
+  progress=Array.from({length:n},(_,p)=>old[p]?[...old[p]]:Array(stages.length).fill(0));
   totalPages=n;currentView=Math.min(currentView,Math.max(0,Math.ceil(n/12)-1));
   save();render();
 }
 function updateSummary(){
-  const f=progress.flat(),st=f.filter(v=>v>0).length,dn=f.filter(v=>v===2).length,t=f.length;
+  const f=progress.flat(),st=f.filter(v=>v>0).length,dn=f.filter(v=>v===2).length,t=Math.max(1,totalPages*stages.length);
   const sp=Math.round(st/t*100),dp=Math.round(dn/t*100);
   startedPercent.textContent=sp+"%";donePercent.textContent=dp+"%";
   mainStarted.style.width=sp+"%";mainDone.style.width=dp+"%";
@@ -501,7 +501,7 @@ function renderHistory(){
     weightedValues.push(date===today?todayWeightedDelta():Number(history.weightedDays?.[date]||0));
   }
   const weightedAvg=weightedValues.reduce((a,v)=>a+v,0)/7;
-  const remaining=totalPages*5-weightedCount();
+  const remaining=totalPages*stages.length-weightedCount();
   if(remaining<=0){
     forecastDate.innerHTML=`完成！<br><span style="font-size:10px;color:var(--muted);font-weight:400">全工程完了</span>`;
   }else if(weightedAvg>0){
@@ -518,14 +518,14 @@ function renderHistory(){
     const deadline=active?.deadline||document.getElementById("deadlineInput")?.value||"";
     if(!deadline){
       deadlineEl.textContent="";
-    }else if(doneCount()===totalPages*5){
+    }else if(doneCount()===totalPages*stages.length){
       deadlineEl.textContent="締切 "+deadline.replaceAll("-","/")+" ・ 完成済み";
     }else{
       const dl=new Date(deadline+"T00:00:00");
       const todayDate=new Date(localDate()+"T00:00:00");
       const msDay=86400000;
       const daysToDeadline=Math.round((dl-todayDate)/msDay);
-      const remWeighted=Math.max(0,totalPages*5-weightedCount());
+      const remWeighted=Math.max(0,totalPages*stages.length-weightedCount());
       const needPerDay=daysToDeadline>=0 ? remWeighted/Math.max(1,daysToDeadline+1) : null;
 
       let forecastDiff="";
@@ -615,6 +615,7 @@ function renderPages(){
     }
     pages.appendChild(row);
   }
+  pages.classList.toggle("short-project",totalPages<=12);
   const views=Math.ceil(totalPages/12);
   range.textContent=`${startPage+start}–${startPage+end-1} / 全${totalPages}P`;navPage.textContent=`${currentView+1} / ${views}`;
   prev.disabled=currentView===0;next.disabled=currentView>=views-1;

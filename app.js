@@ -664,10 +664,11 @@ function paintCellAtPoint(x,y){
 }
 function finishPaint(){
   cancelPaintHold();
-  if(!paintMode)return;
+  const wasPaintMode=paintMode;
   paintMode=false;
   if(paintSourceCell)paintSourceCell.classList.remove("paint-source");
   paintSourceCell=null;
+  if(!wasPaintMode)return;
   suppressCellClickUntil=Date.now()+500;
   suppressPageSwipeUntil=Date.now()+500;
   save();

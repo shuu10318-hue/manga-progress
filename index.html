@@ -620,7 +620,14 @@ function loadProjectStore(){
   try{
     const raw=JSON.parse(localStorage.getItem(PROJECTS_KEY));
     if(raw&&raw.projects&&typeof raw.projects==="object"){
-      projectStore={version:2,activeProjectId:raw.activeProjectId||null,projects:{},projectOrder:Array.isArray(raw.projectOrder)?raw.projectOrder:[],folders:(raw.folders&&typeof raw.folders==="object")?raw.folders:{}};
+      projectStore={
+        version:2,
+        activeProjectId:raw.activeProjectId||null,
+        projects:{},
+        projectOrder:Array.isArray(raw.projectOrder)?raw.projectOrder:[],
+        folders:(raw.folders&&typeof raw.folders==="object")?raw.folders:{},
+        rootOrder:Array.isArray(raw.rootOrder)?raw.rootOrder:[]
+      };
       Object.entries(raw.projects).forEach(([id,p])=>{
         if(p&&Array.isArray(p.progress))projectStore.projects[id]=normalizeProjectData(p);
       });
@@ -628,7 +635,7 @@ function loadProjectStore(){
       return;
     }
   }catch(e){}
-  projectStore={version:2,activeProjectId:null,projects:{}};
+  projectStore={version:2,activeProjectId:null,projects:{},projectOrder:[],folders:{},rootOrder:[]};
   persistProjectStore();
 }
 function applyProjectData(s){
@@ -660,6 +667,8 @@ function showProjectHome(){
   currentProjectId=null;
   document.getElementById("editorApp").style.display="none";
   document.getElementById("projectHome").style.display="";
+  document.body.style.overflowY="auto";
+  document.body.style.overflowX="hidden";
   renderProjectList();
 }
 function projectPercent(p){
@@ -683,12 +692,17 @@ function renderProjectList(){
   entries.forEach(([id,p])=>{
     const item=document.createElement("div");
     item.className="project-item";
-    item.dataset.projectId=id;
+    item.dataset.projectId=id; item.dataset.orderKey="p:"+id;
     const donePages=(p.progress||[]).filter(r=>Array.isArray(r)&&r.every(v=>v===2)).length;
     item.innerHTML=`<div class="project-item-main">
       <div style="min-width:0">
         <div class="project-item-title"></div>
-        <div class="project-item-meta">全${p.totalPages}P ・ 完成 ${donePages}P ・ 全工程 ${projectPercent(p)}%${p.creationStartDate?` ・ 創作開始 ${p.creationStartDate.replaceAll("-","/")}`:""}${p.deadline?` ・ 締切 ${p.deadline.replaceAll("-","/")}`:""}</div>
+        <div class="project-item-meta">
+<div class="project-meta-row"><span>ページ</span><b>全${p.totalPages}P</b></div>
+<div class="project-meta-row"><span>完成</span><b>${donePages}P / ${p.totalPages}P</b></div>
+<div class="project-meta-row"><span>全工程</span><b>${projectPercent(p)}%</b></div>
+<div class="project-meta-row"><span>締切</span><b>${p.deadline?p.deadline.replaceAll("-","/"):"未設定"}</b></div>
+</div>
       </div>
       <div class="project-item-actions">
         <button class="project-edit-button">編集</button>
@@ -722,7 +736,10 @@ function makeBackup(){
     type:"multi-project",
     exportedAt:new Date().toISOString(),
     projects:projectStore.projects,
-    activeProjectId:projectStore.activeProjectId
+    activeProjectId:projectStore.activeProjectId,
+    projectOrder:Array.isArray(projectStore.projectOrder)?projectStore.projectOrder:[],
+    folders:(projectStore.folders&&typeof projectStore.folders==="object")?projectStore.folders:{},
+    rootOrder:Array.isArray(projectStore.rootOrder)?projectStore.rootOrder:[]
   };
 }
 function safeFileName(name){return (name||"漫画制作進捗").replace(/[\/:*?"<>|]/g,"_").trim()||"漫画制作進捗"}
@@ -751,7 +768,14 @@ function restoreBackup(data){
       if(p&&Array.isArray(p.progress))restored[id]=normalizeProjectData(p);
     });
     if(!Object.keys(restored).length)throw new Error("invalid");
-    projectStore={version:2,activeProjectId:null,projects:restored};
+    projectStore={
+      version:2,
+      activeProjectId:null,
+      projects:restored,
+      projectOrder:Array.isArray(data.projectOrder)?data.projectOrder:[],
+      folders:(data.folders&&typeof data.folders==="object")?data.folders:{},
+      rootOrder:Array.isArray(data.rootOrder)?data.rootOrder:[]
+    };
     persistProjectStore();
     showProjectHome();
     return "all";
@@ -1167,6 +1191,8 @@ document.getElementById("createNewProject").onclick=()=>{
   projectStore.projects[id].creationStartDate=document.getElementById("newProjectCreationStartDate").value||"";
   projectStore.projects[id].deadline=document.getElementById("newProjectDeadline").value||"";
   projectStore.projectOrder=[id,...(Array.isArray(projectStore.projectOrder)?projectStore.projectOrder:[]).filter(x=>x!==id)];
+  if(!Array.isArray(projectStore.rootOrder))projectStore.rootOrder=[];
+  projectStore.rootOrder=["p:"+id,...projectStore.rootOrder.filter(k=>k!=="p:"+id)];
   projectStore.activeProjectId=id;
   persistProjectStore();
   document.getElementById("projectModal").classList.remove("open");
@@ -1398,6 +1424,18 @@ let currentFolderId=null;
 function ensureFolders(){
  if(!projectStore.folders||typeof projectStore.folders!=="object")projectStore.folders={};
  Object.values(projectStore.projects||{}).forEach(p=>{if(!("folderId" in p))p.folderId=null});
+ if(!Array.isArray(projectStore.rootOrder))projectStore.rootOrder=[];
+ const keys=[];
+ Object.keys(projectStore.folders).forEach(id=>keys.push("f:"+id));
+ (projectStore.projectOrder||[]).forEach(id=>{
+   if(projectStore.projects[id]&&!projectStore.projects[id].folderId)keys.push("p:"+id);
+ });
+ Object.keys(projectStore.projects||{}).forEach(id=>{
+   if(!projectStore.projects[id].folderId)keys.push("p:"+id);
+ });
+ const valid=[...new Set(keys)];
+ projectStore.rootOrder=projectStore.rootOrder.filter(k=>valid.includes(k));
+ valid.forEach(k=>{if(!projectStore.rootOrder.includes(k))projectStore.rootOrder.push(k)});
 }
 function folderCount(fid){return Object.values(projectStore.projects||{}).filter(p=>p.folderId===fid).length}
 function renderFoldersAndFilter(){
@@ -1440,15 +1478,20 @@ function renderFoldersAndFilter(){
  }
  if(!currentFolderId){
    Object.entries(projectStore.folders).forEach(([fid,f])=>{
-     const el=document.createElement("div");el.className="folder-item";el.dataset.folderId=fid;
+     const el=document.createElement("div");el.className="folder-item";el.dataset.folderId=fid;el.dataset.orderKey="f:"+fid;
      el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon">📁</span> ${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</div><div class="folder-meta">${folderCount(fid)}作品</div></div><button class="folder-open" type="button">開く</button></div>`;
      el.querySelector(".folder-open").addEventListener("click",e=>{
        e.preventDefault();e.stopPropagation();
        currentFolderId=fid;
        renderFoldersAndFilter();
      });
-     list.prepend(el);
+     list.append(el);
    });
+   const rank=new Map(projectStore.rootOrder.map((k,i)=>[k,i]));
+   const mixed=[...list.querySelectorAll(".folder-item[data-folder-id],.project-item[data-project-id]")]
+     .filter(el=>el.classList.contains("folder-item")||!projectStore.projects[el.dataset.projectId]?.folderId);
+   mixed.sort((a,b)=>(rank.get(a.dataset.orderKey)??999999)-(rank.get(b.dataset.orderKey)??999999));
+   mixed.forEach(el=>list.append(el));
  }
  requestAnimationFrame(()=>{folderRendering=false});
 }
@@ -1456,6 +1499,8 @@ function createFolder(){
  const input=document.getElementById("folderNameInput"),name=input.value.trim();if(!name)return;
  ensureFolders();const id="folder-"+Date.now();
  projectStore.folders[id]={name,createdAt:new Date().toISOString()};
+ if(!Array.isArray(projectStore.rootOrder))projectStore.rootOrder=[];
+ projectStore.rootOrder=["f:"+id,...projectStore.rootOrder.filter(k=>k!=="f:"+id)];
  persistProjectStore();input.value="";document.getElementById("folderModal").classList.remove("open");document.body.style.overflow="";
  renderFoldersAndFilter();
 }
@@ -1511,10 +1556,10 @@ document.addEventListener("click",e=>{
 // 既存renderProjectHome後にフォルダ表示を重ねる
 let folderRendering=false;
 const folderObserver=new MutationObserver(()=>{
- if(reorderDragging||folderRendering)return;
+ if(window.__mixedRootDragging||reorderDragging||folderRendering)return;
  clearTimeout(window.__folderRenderTimer);
  window.__folderRenderTimer=setTimeout(()=>{
-   if(!reorderDragging&&!folderRendering)renderFoldersAndFilter();
+   if(!window.__mixedRootDragging&&!reorderDragging&&!folderRendering)renderFoldersAndFilter();
  },0);
 });
 const folderList=document.getElementById("projectList");
@@ -1524,7 +1569,7 @@ if(folderList)folderObserver.observe(folderList,{childList:true});
 // フォルダ内では「←戻る」上で離すと一覧へ戻す。
 let folderDropTarget=null;
 document.addEventListener("touchmove",e=>{
- if(!reorderDragging||e.touches.length!==1)return;
+ if(window.__mixedRootDragging||!reorderDragging||e.touches.length!==1)return;
  const t=e.touches[0];
  let nextTarget=null;
 
@@ -1566,7 +1611,7 @@ document.addEventListener("touchmove",e=>{
  }
 },{passive:true});
 document.addEventListener("touchend",()=>{
- if(!reorderDragging||!folderDropTarget)return;
+ if(window.__mixedRootDragging||!reorderDragging||!folderDropTarget)return;
  const pid=reorderDragging.dataset.projectId,p=projectStore.projects[pid];
  if(p){
    p.folderId=folderDropTarget.type==="folder"?folderDropTarget.id:null;
@@ -1577,6 +1622,116 @@ document.addEventListener("touchend",()=>{
  folderDropTarget=null;
  setTimeout(renderFoldersAndFilter,0);
 },{capture:true,passive:true});
+
+
+// フォルダ＋作品 共通並び替え（ルート一覧）
+(function(){
+ const list=document.getElementById("projectList"); if(!list)return;
+ let drag=null,hold=null,sx=0,sy=0,dropFolderId=null;
+ const HOLD=480,CANCEL=12;
+ const visibleItems=()=>[...list.querySelectorAll(":scope > .folder-item,:scope > .project-item")]
+   .filter(el=>el.classList.contains("folder-item")||el.style.display!=="none");
+ function saveOrder(){
+   if(currentFolderId)return;
+   projectStore.rootOrder=visibleItems().map(el=>el.dataset.orderKey).filter(Boolean);
+   // 互換用の作品順も維持
+   projectStore.projectOrder=projectStore.rootOrder.filter(k=>k.startsWith("p:")).map(k=>k.slice(2));
+   persistProjectStore();
+ }
+ function finish(){
+   clearTimeout(hold);hold=null;
+   if(!drag)return;
+   const pid=drag.dataset.projectId;
+   if(dropFolderId&&pid&&projectStore.projects[pid]){
+     projectStore.projects[pid].folderId=dropFolderId;
+     projectStore.rootOrder=(projectStore.rootOrder||[]).filter(k=>k!=="p:"+pid);
+     persistProjectStore();
+   }else{
+     saveOrder();
+   }
+   drag.classList.remove("mixed-root-dragging");
+   document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
+   document.querySelectorAll(".folder-icon").forEach(x=>x.textContent="📁");
+   drag=null;dropFolderId=null;window.__mixedRootDragging=false;
+   setTimeout(renderFoldersAndFilter,0);
+ }
+ list.addEventListener("touchstart",e=>{
+   if(currentFolderId||e.touches.length!==1)return;
+   const item=e.target.closest(".folder-item,.project-item"); if(!item)return;
+   // 操作ボタン上では長押しドラッグを開始しない。
+   // フォルダの「開く」を押した時にバイブが鳴るのを防ぐ。
+   if(e.target.closest("button,a,input,textarea,select,label"))return;
+   const t=e.touches[0];sx=t.clientX;sy=t.clientY;
+   clearTimeout(hold);
+   hold=setTimeout(()=>{
+     drag=item; dropFolderId=null; item.classList.add("mixed-root-dragging");
+     window.__mixedRootDragging=true;
+     window.__suppressMixedClickUntil=Date.now()+800;
+     // 既存の作品ドラッグ処理とは排他的にする
+     if(typeof reorderHoldTimer!=="undefined"){clearTimeout(reorderHoldTimer);reorderHoldTimer=null}
+     if(typeof reorderDragging!=="undefined"&&reorderDragging){
+       reorderDragging.classList.remove("reorder-dragging");reorderDragging=null;
+     }
+     folderDropTarget=null;
+     document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
+     if(navigator.vibrate)navigator.vibrate(28);
+   },HOLD);
+ },{capture:true,passive:true});
+ list.addEventListener("touchmove",e=>{
+   if(currentFolderId||e.touches.length!==1)return;
+   const t=e.touches[0];
+   if(!drag){
+     if(Math.hypot(t.clientX-sx,t.clientY-sy)>CANCEL){
+       clearTimeout(hold);hold=null;
+       if(typeof reorderHoldTimer!=="undefined"){clearTimeout(reorderHoldTimer);reorderHoldTimer=null}
+     }
+     return;
+   }
+   e.preventDefault(); e.stopImmediatePropagation();
+   const others=visibleItems().filter(x=>x!==drag);
+   if(!others.length)return;
+
+   // 作品をフォルダ中央へ重ねた時だけ「格納」扱い。
+   dropFolderId=null;
+   document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
+   document.querySelectorAll(".folder-icon").forEach(x=>x.textContent="📁");
+   if(drag.classList.contains("project-item")){
+     const folder=others.find(el=>{
+       if(!el.classList.contains("folder-item"))return false;
+       const r=el.getBoundingClientRect();
+       const inset=Math.min(18,r.height*.22);
+       return t.clientX>=r.left&&t.clientX<=r.right&&
+              t.clientY>=r.top+inset&&t.clientY<=r.bottom-inset;
+     });
+     if(folder){
+       dropFolderId=folder.dataset.folderId;
+       folder.classList.add("drag-over");
+       const icon=folder.querySelector(".folder-icon");if(icon)icon.textContent="📂";
+       return;
+     }
+   }
+
+   // それ以外は通常の並び替え。
+   let target=null;
+   for(const el of others){
+     const r=el.getBoundingClientRect();
+     if(t.clientY < r.top+r.height/2){target=el;break}
+   }
+   if(target) list.insertBefore(drag,target);
+   else list.append(drag);
+ },{capture:true,passive:false});
+ list.addEventListener("touchend",e=>{
+   if(!drag)return;
+   e.stopImmediatePropagation(); finish();
+ },{capture:true,passive:true});
+ list.addEventListener("touchcancel",finish,{capture:true,passive:true});
+ window.addEventListener("touchend",()=>{if(!drag)window.__mixedRootDragging=false},{passive:true});
+ list.addEventListener("click",e=>{
+   if(Date.now()<(window.__suppressMixedClickUntil||0)){
+     e.preventDefault();e.stopImmediatePropagation();
+   }
+ },true);
+})();
 
 ensureFolders();
 setTimeout(renderFoldersAndFilter,0);
@@ -1604,5 +1759,37 @@ setTimeout(renderFoldersAndFilter,0);
   padding:7px 9px;
   font-size:12px;
   white-space:nowrap;
+}
+</style>
+
+<style>
+.project-item-meta{display:grid!important;grid-template-columns:1fr 1fr;gap:5px 12px;line-height:1.4}
+.project-meta-row{display:flex;justify-content:space-between;gap:7px;min-width:0}
+.project-meta-row span{color:#999;white-space:nowrap}
+.project-meta-row b{font-weight:700;color:#555;white-space:nowrap}
+.mixed-root-dragging{opacity:.78;transform:scale(1.01);position:relative;z-index:20}
+</style>
+
+<style>
+html,body{min-height:100%;overflow-x:hidden}
+body{overflow-y:auto;-webkit-overflow-scrolling:touch}
+#projectHome{
+  min-height:100dvh;
+  height:auto;
+  overflow:visible;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom))!important;
+}
+#projectList{overflow:visible;touch-action:pan-y}
+</style>
+
+<style>
+/* 作品一覧では通常スワイプをブラウザの縦スクロールに渡す */
+#projectHome .project-item,
+#projectHome .folder-item{
+  touch-action:pan-y!important;
+}
+#projectHome .project-item.reorder-dragging,
+#projectHome .mixed-root-dragging{
+  touch-action:none!important;
 }
 </style>

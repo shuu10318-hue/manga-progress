@@ -462,9 +462,11 @@ function updateSummary(){
   const f=progress.flat(),st=f.filter(v=>v>0).length,dn=f.filter(v=>v===2).length,t=Math.max(1,totalPages*stages.length);
   const sp=Math.round(st/t*100),dp=Math.round(dn/t*100);
   startedPercent.textContent=sp+"%";donePercent.textContent=dp+"%";
-  const overallRing=document.getElementById("overallRing"), overallDoneRing=document.getElementById("overallDoneRing");
-  if(overallRing) overallRing.style.setProperty("--started-p",sp+"%");
-  if(overallDoneRing) overallDoneRing.style.setProperty("--done-p",dp+"%");
+  const overallRing=document.getElementById("overallRing");
+  if(overallRing){
+    overallRing.style.setProperty("--started-p",sp+"%");
+    overallRing.style.setProperty("--done-p",dp+"%");
+  }
   completePages.textContent=`完成 ${progress.filter(r=>r.every(v=>v===2)).length} / ${totalPages}P`;
   renderStages();renderHistory();
 }
@@ -2133,7 +2135,10 @@ function cleanEnglishPass(root=document){
    if(!el || el.closest("script,style,option") || el.closest(CLEAN_USER_TEXT_SELECTOR))continue;
    const raw=n.nodeValue||"", s=raw.trim(); if(!s)continue;
    let x=CLEAN_EN_EXACT[s]||FULL_I18N?.en?.[s]||s;
-   x=x.replace(/^全(\d+)P$/,"$1 pages")
+   x=x.replace(/^締切まで\s*あと(\d+)日\s*・\s*完成予想は締切より\s*(\d+)日超過するペース\s*・\s*必要ペース\s*1日([\d.]+)工程$/,"$1 days until deadline · Forecast is $2 days after deadline · Required pace: $3 stages/day")
+      .replace(/^締切まで\s*あと(\d+)日\s*・\s*完成予想は締切より\s*(\d+)日早いペース\s*・\s*必要ペース\s*1日([\d.]+)工程$/,"$1 days until deadline · Forecast is $2 days before deadline · Required pace: $3 stages/day")
+      .replace(/^締切まで\s*あと(\d+)日\s*・\s*完成予想は締切予定日と同日\s*・\s*必要ペース\s*1日([\d.]+)工程$/,"$1 days until deadline · Forecast matches the deadline · Required pace: $2 stages/day")
+      .replace(/^全(\d+)P$/,"$1 pages")
       .replace(/^(\d+)–(\d+)\s*\/\s*全(\d+)P$/,"$1–$2 / $3 pages")
       .replace(/^完成\s*(\d+)\s*\/\s*(\d+)P$/,"Completed $1 / $2 pages")
       .replace(/^着手\s*(\d+)%\s*・\s*完成\s*(\d+)%$/,"Started $1% · Completed $2%")

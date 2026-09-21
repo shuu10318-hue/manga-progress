@@ -2094,3 +2094,86 @@ setTimeout(refreshCurrentProjectTitle,0);
   });
   document.getElementById("appSettingsButton")?.addEventListener("click",localizeDataManagement);
 })();
+
+
+/* ===== I18N CLEAN AUTHORITY =====
+   One runtime authority. Japanese HTML/render output is the source of truth.
+   English is applied as a presentation layer. User-authored project/folder/stage/note
+   text is excluded. Language changes persist once, then reload once. */
+try{ languageObserver.disconnect(); }catch(e){}
+try{ fullLanguageObserver.disconnect(); }catch(e){}
+
+const CLEAN_EN_EXACT = {
+ "作品一覧":"Projects","メモ一覧":"Notes","総合進捗":"Overall Progress","制作進捗":"Overall Progress",
+ "制作中":"In progress","完成率":"Completion","工程別進捗":"Progress by Stage","工程表":"Production Table",
+ "作業履歴":"Work History","今日":"Today","直近7日":"Last 7 days","直近7日間":"Last 7 days",
+ "1日平均":"Daily average","完成予想":"Estimated Completion","変更は自動保存されます":"Changes are saved automatically",
+ "着手中":"In progress","完成済み":"Completed","着手":"Started","完成":"Completed",
+ "← 前":"← Prev","次 →":"Next →","閉じる":"Close","言語":"Language","アプリ設定":"App Settings",
+ "新規作品のデフォルト":"New Project Defaults","制作ページ":"Pages","工程":"Stages",
+ "＋ 工程を追加":"+ Add Stage","キャンセル":"Cancel","保存":"Save","データ管理":"Data Management",
+ "着手=0.5工程として直近7日から算出":"Calculated from the last 7 days, counting in-progress as 0.5 stage."
+};
+const CLEAN_USER_TEXT_SELECTOR = [
+ "#projectList",".project-title",".project-name",".folder-name",
+ "#stageProgress .stage-name","#pages .stage-name",".memo-text",".memo-list",
+ "input[type=text]","textarea"
+].join(",");
+
+function cleanEnglishPass(root=document){
+ if(languageSettings?.language!=="en")return;
+ document.documentElement.lang="en";
+ document.title="Manga Production Tracker";
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ const nodes=[]; while(walker.nextNode())nodes.push(walker.currentNode);
+ for(const n of nodes){
+   const el=n.parentElement;
+   if(!el || el.closest("script,style,option") || el.closest(CLEAN_USER_TEXT_SELECTOR))continue;
+   const raw=n.nodeValue||"", s=raw.trim(); if(!s)continue;
+   let x=CLEAN_EN_EXACT[s]||FULL_I18N?.en?.[s]||s;
+   x=x.replace(/^全(\d+)P$/,"$1 pages")
+      .replace(/^(\d+)–(\d+)\s*\/\s*全(\d+)P$/,"$1–$2 / $3 pages")
+      .replace(/^完成\s*(\d+)\s*\/\s*(\d+)P$/,"Completed $1 / $2 pages")
+      .replace(/^着手\s*(\d+)%\s*・\s*完成\s*(\d+)%$/,"Started $1% · Completed $2%")
+      .replace(/^あと約(\d+)日$/,"About $1 days")
+      .replace(/^締切まで\s*あと(\d+)日$/,"$1 days until deadline")
+      .replace(/^締切を\s*(\d+)日超過$/,"$1 days past deadline")
+      .replace(/^完成予想は締切より\s*(\d+)日超過するペース$/,"Forecast is $1 days after deadline")
+      .replace(/^完成予想は締切より\s*(\d+)日早いペース$/,"Forecast is $1 days before deadline")
+      .replace(/^必要ペース\s*1日([\d.]+)工程$/,"Required pace: $1 stages/day");
+   if(x!==s)n.nodeValue=raw.replace(s,x);
+ }
+}
+
+let cleanI18nTimer=0;
+const cleanI18nObserver=new MutationObserver(()=>{
+ if(languageSettings?.language!=="en")return;
+ clearTimeout(cleanI18nTimer);
+ cleanI18nTimer=setTimeout(()=>cleanEnglishPass(document),0);
+});
+if(languageSettings?.language==="en"){
+ cleanI18nObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
+ setTimeout(()=>cleanEnglishPass(document),80);
+}else{
+ document.documentElement.lang="ja";
+ document.title="漫画制作進捗";
+}
+
+document.querySelectorAll(".language-option").forEach(btn=>{
+ btn.onclick=()=>{
+   const selected=btn.dataset.lang==="en"?"en":"ja";
+   if(selected===languageSettings.language){
+     document.getElementById("languageModal")?.classList.remove("open");
+     return;
+   }
+   appSettings=normalizeAppSettings({
+     language:selected,
+     defaultStartPage:projectDefaults.startPage,
+     defaultEndPage:projectDefaults.endPage,
+     defaultStages:[...projectDefaults.stages]
+   });
+   persistAppSettings();
+   location.reload();
+ };
+});
+/* ===== /I18N CLEAN AUTHORITY ===== */

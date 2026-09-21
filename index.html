@@ -7,7 +7,7 @@
 <title>漫画制作進捗</title>
 
 
-<link rel="stylesheet" href="style.css?v=20260922-cellfix3">
+<link rel="stylesheet" href="style.css?v=20260922-ringfix1">
 </head>
 <body>
 
@@ -83,12 +83,15 @@
 <input id="deadlineInput" type="date">
 </div>
 <div class="card overall-card">
-<div class="overall-ring" id="overallRing"><div class="overall-ring-inner"><b id="overallRingPercent"></b><span>完成率</span></div></div>
+<div class="overall-ring" id="overallRing">
+<div class="overall-done-ring" id="overallDoneRing">
+<div class="overall-ring-inner"><span>着手</span><b id="startedPercent"></b><span>完成</span><b id="donePercent"></b></div>
+</div>
+</div>
 <div class="overall-detail">
 <div class="overall-kicker">OVERALL</div>
-<div class="summary-top"><div><div class="summary-title">制作進捗 <span class="status-pill">制作中</span></div><div class="percentages"><span>着手 <b id="startedPercent"></b></span><span>完成 <b id="donePercent"></b></span></div></div><div id="completePages" class="complete-pages"></div></div>
-<div class="dual-bar"><div id="mainStarted" class="started-bar"></div><div id="mainDone" class="done-bar"></div></div>
-<div class="legend"><span><i class="state-swatch started"></i> 着手中</span><span><i class="state-swatch done"></i> 完成</span></div>
+<div class="summary-top"><div><div class="summary-title">制作進捗 <span class="status-pill">制作中</span></div></div><div id="completePages" class="complete-pages"></div></div>
+<div class="ring-legend"><span><i class="ring-key started"></i> 着手</span><span><i class="ring-key done"></i> 完成</span></div>
 </div>
 </div>
 <div class="card"><div class="section-title">工程別進捗</div><div id="stageProgress"></div></div>
@@ -275,7 +278,7 @@
 </div>
 
 
-<script src="app.js?v=20260922-cellfix3"></script>
+<script src="app.js?v=20260922-ringfix1"></script>
 </body>
 </html>
 

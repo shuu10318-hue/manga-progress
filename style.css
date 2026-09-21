@@ -721,18 +721,3 @@ input{border-color:var(--border);border-radius:12px}
   .overall-ring-inner b{font-size:11px}
   .overall-card .legend{display:none}
 }
-
-/* ringfix4: keep bilingual labels inside the donut and prevent summary text collisions */
-.overall-ring-inner{
-  width:72px;height:72px;
-  column-gap:3px;row-gap:3px;
-}
-.overall-ring-inner span{font-size:8px;white-space:nowrap}
-.overall-ring-inner b{font-size:12px;white-space:nowrap}
-.overall-card .summary-top{display:block}
-.overall-card .complete-pages{margin-top:7px;white-space:normal}
-@media(max-width:390px){
-  .overall-ring-inner{width:66px;height:66px}
-  .overall-ring-inner span{font-size:7px}
-  .overall-ring-inner b{font-size:11px}
-}

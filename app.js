@@ -2152,10 +2152,19 @@ function cleanEnglishPass(root=document){
 }
 
 let cleanI18nTimer=0;
-const cleanI18nObserver=new MutationObserver(()=>{
+const cleanI18nObserver=new MutationObserver((mutations)=>{
  if(languageSettings?.language!=="en")return;
+ const roots=new Set();
+ for(const m of mutations){
+   const el=m.target?.nodeType===Node.TEXT_NODE ? m.target.parentElement : m.target;
+   if(el && el.nodeType===Node.ELEMENT_NODE) roots.add(el);
+ }
  clearTimeout(cleanI18nTimer);
- cleanI18nTimer=setTimeout(()=>cleanEnglishPass(document),0);
+ cleanI18nTimer=setTimeout(()=>{
+   for(const el of roots){
+     if(el.isConnected)cleanEnglishPass(el);
+   }
+ },0);
 });
 if(languageSettings?.language==="en"){
  cleanI18nObserver.observe(document.body,{subtree:true,childList:true,characterData:true});

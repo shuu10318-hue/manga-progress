@@ -638,3 +638,82 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch}
   min-height:0!important;
   height:auto!important;
 }
+
+
+/* ===== Modern Cute UI — visual layer only ===== */
+:root{
+  --bg:#f4f5f7;--card:#fff;--text:#24262a;--muted:#858a91;
+  --border:#e2e5e9;--soft:#e9ebee;--started:#aeb2b7;--done:#2c2e32;
+}
+body{background:var(--bg);letter-spacing:.005em}
+.app{max-width:520px;padding:16px 13px 42px}
+.card{
+  border-color:var(--border);border-radius:21px;padding:16px;
+  box-shadow:0 5px 18px rgba(32,40,50,.045);
+}
+button,input{transition:transform .08s ease,background .15s ease,border-color .15s ease}
+button:active{transform:scale(.98)}
+input{border-color:var(--border);border-radius:12px}
+.section-title{font-size:14px;letter-spacing:.01em}
+#editorApp #projectBreadcrumb{color:#8b9097!important}
+#editorApp #projectBreadcrumb .crumb-current{color:#34373b!important}
+.memo-list-button,.settings-button,.language-button,.project-add-button,.folder-add,
+.backup-button,.nav-button,.page-button{
+  border-color:var(--border)!important;border-radius:12px!important;
+  box-shadow:0 2px 8px rgba(32,40,50,.025);
+}
+
+/* Dashboard summary */
+.overall-card{
+  display:grid;grid-template-columns:106px minmax(0,1fr);gap:15px;
+  align-items:center;padding:16px;
+}
+.overall-ring{
+  --p:0%;width:102px;height:102px;border-radius:50%;
+  background:conic-gradient(var(--done) 0 var(--p),#eceef1 var(--p) 100%);
+  display:grid;place-items:center;flex:none;
+}
+.overall-ring-inner{
+  width:78px;height:78px;border-radius:50%;background:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.overall-ring-inner b{font-size:22px;line-height:1;font-weight:800;letter-spacing:-.04em}
+.overall-ring-inner span{font-size:9px;color:var(--muted);margin-top:5px}
+.overall-detail{min-width:0}
+.overall-kicker{font-size:8px;font-weight:800;letter-spacing:.16em;color:#a0a4aa;margin-bottom:3px}
+.overall-card .summary-top{align-items:flex-start}
+.overall-card .summary-title{font-size:15px}
+.status-pill{
+  display:inline-block;margin-left:4px;padding:4px 7px;border-radius:999px;
+  background:#f0f1f3;color:#71767d;font-size:9px;font-weight:700;vertical-align:2px;
+}
+.overall-card .percentages{gap:10px;font-size:10px;margin-top:8px}
+.overall-card .complete-pages{font-size:10px;color:var(--muted);white-space:nowrap;margin-top:3px}
+.overall-card .dual-bar{height:8px;margin-top:10px}
+.overall-card .legend{font-size:9px;margin-top:7px;gap:10px}
+
+/* Table stays the main work surface, just softened */
+.progress-cell{border-color:#cfd2d6;border-radius:8px}
+.progress-cell.state2{background:var(--done);border-color:var(--done)}
+.table-head{margin-bottom:6px}
+.page-row{margin-bottom:5px}
+.navigation{margin-top:14px}
+.history-stat{background:#f6f7f8;border-radius:13px}
+.forecast{border-radius:14px}
+.stage .dual-bar{height:9px}
+
+/* Bottom sheets / dialogs share the same visual language */
+.memo-sheet,.folder-sheet,.project-sheet,.settings-sheet,.language-sheet{
+  border-radius:24px 24px 0 0!important;
+}
+.memo-filter,.memo-close,.folder-sheet-actions button,.stage-mini-button,.stage-add-button{
+  border-radius:11px!important;
+}
+
+@media(max-width:390px){
+  .overall-card{grid-template-columns:92px minmax(0,1fr);gap:12px;padding:14px}
+  .overall-ring{width:88px;height:88px}
+  .overall-ring-inner{width:67px;height:67px}
+  .overall-ring-inner b{font-size:20px}
+  .overall-card .legend{display:none}
+}

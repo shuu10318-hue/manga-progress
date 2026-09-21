@@ -457,6 +457,9 @@ function updateSummary(){
   const f=progress.flat(),st=f.filter(v=>v>0).length,dn=f.filter(v=>v===2).length,t=Math.max(1,totalPages*stages.length);
   const sp=Math.round(st/t*100),dp=Math.round(dn/t*100);
   startedPercent.textContent=sp+"%";donePercent.textContent=dp+"%";
+  const overallRing=document.getElementById("overallRing"), overallRingPercent=document.getElementById("overallRingPercent");
+  if(overallRing) overallRing.style.setProperty("--p",dp+"%");
+  if(overallRingPercent) overallRingPercent.textContent=dp+"%";
   mainStarted.style.width=sp+"%";mainDone.style.width=dp+"%";
   completePages.textContent=`完成 ${progress.filter(r=>r.every(v=>v===2)).length} / ${totalPages}P`;
   renderStages();renderHistory();

@@ -600,6 +600,7 @@ body.project-reorder-mode .project-item::before{content:none!important}
 <script>
 const STORAGE_KEY="manga-progress-v1"; // 旧版データ。移行元として残す
 const PROJECTS_KEY="manga-progress-projects-v2";
+const VIEW_STATE_KEY="manga-progress-view-state-v1";
 let projectStore={version:2,activeProjectId:null,projects:{}};
 let currentProjectId=null;
 const DEFAULT_STAGES=["ネーム","ペン","背景","トーン","写植"];
@@ -757,6 +758,17 @@ function applyProjectData(s){
   currentView=0;
   syncRangeUI();
 }
+
+function saveViewState(view){
+  const state={view};
+  if(view==="project"&&currentProjectId)state.projectId=currentProjectId;
+  if(view==="folder"&&currentFolderId)state.folderId=currentFolderId;
+  localStorage.setItem(VIEW_STATE_KEY,JSON.stringify(state));
+}
+function loadViewState(){
+  try{return JSON.parse(localStorage.getItem(VIEW_STATE_KEY)||"null")}catch(e){return null}
+}
+
 function openProject(id){
   if(!projectStore.projects[id])return;
   currentProjectId=id;
@@ -766,6 +778,7 @@ function openProject(id){
   document.getElementById("projectHome").style.display="none";
   document.getElementById("editorApp").style.display="";
   render();
+  saveViewState("project");
 }
 function showProjectHome(){
   if(currentProjectId)save();
@@ -775,6 +788,8 @@ function showProjectHome(){
   document.body.style.overflowY="auto";
   document.body.style.overflowX="hidden";
   renderProjectList();
+  currentFolderId=null;
+  saveViewState("root");
 }
 function projectPercent(p){
   const vals=(p.progress||[]).flat();
@@ -1359,7 +1374,7 @@ document.getElementById("createNewProject").onclick=()=>{
 };
 
 load();
-showProjectHome();
+
 
 
 // --- Smooth swipe navigation prototype ---
@@ -1673,6 +1688,7 @@ function renderFoldersAndFilter(){
  if(currentFolderId&&projectStore.folders[currentFolderId]){
    head.classList.add("show");toolbar.style.display="none";
    document.getElementById("folderHeadTitle").textContent="📁 "+projectStore.folders[currentFolderId].name;
+   saveViewState("folder");
  }else{
    currentFolderId=null;head.classList.remove("show");toolbar.style.display="flex";
  }
@@ -2000,7 +2016,31 @@ document.addEventListener("touchend",()=>{
 })();
 
 ensureFolders();
-setTimeout(renderFoldersAndFilter,0);
+
+// 全イベント・フォルダ機能の初期化が終わってから、前回の表示位置を1回だけ復元する。
+setTimeout(()=>{
+  const last=loadViewState();
+
+  if(last?.view==="project" && last.projectId && projectStore.projects[last.projectId]){
+    openProject(last.projectId);
+    return;
+  }
+
+  if(last?.view==="folder" && last.folderId && projectStore.folders?.[last.folderId]){
+    currentProjectId=null;
+    currentFolderId=last.folderId;
+    document.getElementById("editorApp").style.display="none";
+    document.getElementById("projectHome").style.display="";
+    document.body.style.overflowY="auto";
+    document.body.style.overflowX="hidden";
+    renderProjectList();
+    renderFoldersAndFilter();
+    return;
+  }
+
+  showProjectHome();
+  renderFoldersAndFilter();
+},0);
 
 </script>
 </body>

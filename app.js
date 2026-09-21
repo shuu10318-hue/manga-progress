@@ -1733,6 +1733,17 @@ const I18N_MORE_EN={
 };
 Object.assign(FULL_I18N.en,I18N_MORE_EN);
 
+Object.assign(FULL_I18N.en,{
+ "制作進捗":"Overall Progress",
+ "制作中":"In progress",
+ "完成率":"Completion",
+ "直近7日間":"Last 7 days",
+ "完成予想":"Estimated Completion",
+ "締切まで":"Until deadline",
+ "必要ペース":"Required pace"
+});
+
+
 function translateUiPatterns(root=document){
  if(uiLang()!=="en")return;
  const els=(root===document?[...document.querySelectorAll("*")]:
@@ -1758,6 +1769,8 @@ function translateUiPatterns(root=document){
        .replace(/^完成予想は締切より\s*(\d+)日超過するペース$/,"Forecast: $1 days after deadline")
        .replace(/^完成予想は締切予定日と同日$/,"Forecast matches the deadline")
        .replace(/^必要ペース\s*1日([\d.]+)工程$/,"Required pace: $1 stages/day")
+       .replace(/^締切まで\s*あと(\d+)日\s*・\s*完成予想は締切より\s*(\d+)日超過するペース\s*・\s*必要ペース\s*1日([\d.]+)工程$/,"$1 days until deadline · Forecast is $2 days after deadline · Required pace: $3 stages/day")
+       .replace(/^締切まで\s*あと(\d+)日\s*・\s*完成予想は締切より\s*(\d+)日早いペース\s*・\s*必要ペース\s*1日([\d.]+)工程$/,"$1 days until deadline · Forecast is $2 days before deadline · Required pace: $3 stages/day")
        .replace(/^(\d+)作品$/,"$1 projects")
        .replace(/^(\d+)P 付箋$/,"Page $1 note");
    }
@@ -1883,8 +1896,9 @@ document.querySelectorAll(".language-option").forEach(btn=>btn.onclick=()=>{
  persistAppSettings();
  document.getElementById("appLanguage").value=selected;
  updateLanguageButtons();
- applyCurrentLanguageNow();
- setTimeout(()=>document.getElementById("languageModal").classList.remove("open"),120);
+ // A single reload gives both languages a clean render and avoids legacy
+ // runtime translation layers fighting over already-rendered text.
+ location.reload();
 });
 
 /* Settings gear now saves ONLY new-project defaults. Language is untouched. */

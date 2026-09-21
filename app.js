@@ -2117,7 +2117,7 @@ const CLEAN_EN_EXACT = {
  "着手=0.5工程として直近7日から算出":"Calculated from the last 7 days, counting in-progress as 0.5 stage."
 };
 const CLEAN_USER_TEXT_SELECTOR = [
- "#projectList",".project-title",".project-name",".folder-name",
+ ".project-title",".project-name",".folder-name",
  "#stageProgress .stage-name","#pages .stage-name",".memo-text",".memo-list",
  "input[type=text]","textarea"
 ].join(",");

@@ -256,10 +256,11 @@ function renderProjectBreadcrumb(){
   const fid=projectParentFolderId(currentProjectId);
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const projectName=esc(p?.title||"プロジェクト");
+  const rootLabel=languageSettings?.language==="en"?"Projects":"作品一覧";
   if(fid){
-    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
   }else{
-    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
   }
 }
 function showFolderView(folderId){
@@ -1258,7 +1259,7 @@ function renderFoldersAndFilter(){
  const head=document.getElementById("folderHead"),toolbar=document.getElementById("folderToolbar");
  if(currentFolderId&&projectStore.folders[currentFolderId]){
    head.classList.add("show");toolbar.style.display="none";
-   document.getElementById("folderHeadTitle").innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><span class="crumb-current">${String(projectStore.folders[currentFolderId].name).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</span>`;
+   document.getElementById("folderHeadTitle").innerHTML=`<button type="button" class="crumb-link" data-nav="root">${languageSettings?.language==="en"?"Projects":"作品一覧"}</button><span class="crumb-sep">›</span><span class="crumb-current">${String(projectStore.folders[currentFolderId].name).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</span>`;
  const renameBtn=document.getElementById("folderRename");
  const deleteBtn=document.getElementById("folderDelete");
  if(renameBtn)renameBtn.style.display="";

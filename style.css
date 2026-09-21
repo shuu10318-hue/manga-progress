@@ -652,7 +652,8 @@ body{background:var(--bg);letter-spacing:.005em}
   box-shadow:0 5px 18px rgba(32,40,50,.045);
 }
 button,input{transition:transform .08s ease,background .15s ease,border-color .15s ease}
-button:active{transform:scale(.98)}
+button:not(.progress-cell):active{transform:scale(.98)}
+.progress-cell:active{transform:none}
 input{border-color:var(--border);border-radius:12px}
 .section-title{font-size:14px;letter-spacing:.01em}
 #editorApp #projectBreadcrumb{color:#8b9097!important}

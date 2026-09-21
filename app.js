@@ -1756,6 +1756,8 @@ function translateUiPatterns(root=document){
    if(FULL_I18N.en[x]) x=FULL_I18N.en[x];
    else{
      x=x.replace(/^全(\d+)P$/,"$1 pages")
+      .replace(/^(\d+)P\s*\/\s*(\d+)P$/,"$1 / $2 pages")
+      .replace(/^(\d+)作品$/,"$1 projects")
        .replace(/^(\d+)–(\d+) \/ 全(\d+)P$/,"$1–$2 / $3 pages")
        .replace(/^完成\s*(\d+)\s*\/\s*(\d+)P$/,"Completed $1 / $2 pages")
        .replace(/^着手\s*(\d+)%\s*・\s*完成\s*(\d+)%$/,"Started $1% · Completed $2%")
@@ -2111,7 +2113,7 @@ const CLEAN_EN_EXACT = {
  "着手中":"In progress","完成済み":"Completed","着手":"Started","完成":"Completed",
  "← 前":"← Prev","次 →":"Next →","閉じる":"Close","言語":"Language","アプリ設定":"App Settings",
  "新規作品のデフォルト":"New Project Defaults","制作ページ":"Pages","工程":"Stages",
- "＋ 工程を追加":"+ Add Stage","キャンセル":"Cancel","保存":"Save","データ管理":"Data Management",
+ "＋ 工程を追加":"+ Add Stage","キャンセル":"Cancel","保存":"Save","データ管理":"Data Management","ページ":"Pages","全工程":"All stages","締切":"Deadline","未設定":"Not set","編集":"Edit","この作品を削除":"Delete this project","作品":"projects",
  "着手=0.5工程として直近7日から算出":"Calculated from the last 7 days, counting in-progress as 0.5 stage."
 };
 const CLEAN_USER_TEXT_SELECTOR = [

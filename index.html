@@ -1802,8 +1802,27 @@ document.getElementById("folderDelete")?.addEventListener("click",()=>{
  if(!currentFolderId)return;
  const f=projectStore.folders[currentFolderId];if(!f)return;
  if(!confirm(`「${f.name}」を削除しますか？\n中の作品は作品一覧へ戻ります。`))return;
- Object.values(projectStore.projects).forEach(p=>{if(p.folderId===currentFolderId)p.folderId=null});
- delete projectStore.folders[currentFolderId];currentFolderId=null;persistProjectStore();renderProjectHome();setTimeout(renderFoldersAndFilter,0);
+
+ const deletedFolderId=currentFolderId;
+ Object.values(projectStore.projects).forEach(p=>{
+   if(p.folderId===deletedFolderId)p.folderId=null;
+ });
+ delete projectStore.folders[deletedFolderId];
+
+ if(Array.isArray(projectStore.rootOrder)){
+   projectStore.rootOrder=projectStore.rootOrder.filter(k=>k!=="f:"+deletedFolderId);
+ }
+ currentFolderId=null;
+ persistProjectStore();
+
+ // 削除した瞬間にルート一覧へ戻して再描画
+ document.getElementById("editorApp").style.display="none";
+ document.getElementById("projectHome").style.display="";
+ document.body.style.overflowY="auto";
+ document.body.style.overflowX="hidden";
+ saveViewState("root");
+ renderProjectList();
+ renderFoldersAndFilter();
 });
 
 

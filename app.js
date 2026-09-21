@@ -1596,7 +1596,7 @@ const FULL_I18N={
  en:{
  "作品一覧":"Projects","＋ 新しい作品":"+ New Project","＋ フォルダ":"+ Folder","← 戻る":"← Back","名前変更":"Rename","削除":"Delete",
  "漫画制作進捗":"Manga Production Tracker","メモ一覧":"Notes","作品名":"Project title","制作ページ数":"Pages","制作ページ":"Pages",
- "創作開始日":"Start date","締切予定日":"Deadline","総合進捗":"Overall Progress","工程別進捗":"Progress by Stage","工程表":"Production Table",
+ "創作開始日":"Start date","締切予定日":"Deadline","総合進捗":"Overall Progress","制作進捗":"Overall Progress","工程別進捗":"Progress by Stage","工程表":"Production Table",
  "作業履歴":"Work History","今日":"Today","直近7日":"Last 7 days","1日平均":"Daily average","完成予想":"Estimated Completion",
  "← 前":"← Prev","次 →":"Next →","未着手":"Not started","着手中":"In progress","完成済み":"Completed","着手":"Started","完成":"Completed",
  "新しい作品":"New Project","作品編集":"Edit Project","工程設定":"Stage Settings","工程をカスタマイズ":"Customize Stages",
@@ -1667,9 +1667,15 @@ applyLanguage=function(){
 };
 const languageObserver=new MutationObserver(muts=>{
  if(uiLang()!=="en")return;
- muts.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)translateDynamicEnglish(n);else if(n.nodeType===3&&FULL_I18N.en[n.nodeValue.trim()])n.nodeValue=FULL_I18N.en[n.nodeValue.trim()]}));
+ muts.forEach(m=>{
+   if(m.type==="characterData"){
+     const n=m.target, raw=n.nodeValue||"", trim=raw.trim();
+     if(FULL_I18N.en[trim])n.nodeValue=raw.replace(trim,FULL_I18N.en[trim]);
+   }
+   m.addedNodes?.forEach(n=>{if(n.nodeType===1)translateDynamicEnglish(n);else if(n.nodeType===3&&FULL_I18N.en[n.nodeValue.trim()])n.nodeValue=FULL_I18N.en[n.nodeValue.trim()]});
+ });
 });
-languageObserver.observe(document.body,{subtree:true,childList:true});
+languageObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
 
 /* Localized dialogs without touching user data */
 const _alert=window.alert.bind(window),_confirm=window.confirm.bind(window);
@@ -1803,107 +1809,49 @@ setTimeout(refreshWholeLanguage,0);
 
 /* ---- extracted script block ---- */
 
-/* ---- Runtime language-state fix + settings separation ---- */
-const STATIC_JA_SNAPSHOT=new Map();
-const LANGUAGE_DYNAMIC_SELECTOR="#startedPercent,#donePercent,#completePages,#overallRingPercent,#stageProgress,#historyCard,#pages,#rangeText,#pageIndicator,#forecastText,#todayCount,#weekCount,#dailyAverage";
-const LANGUAGE_DYNAMIC_IDS=new Set(["startedPercent","donePercent","completePages","overallRingPercent","stageProgress","historyCard","pages","rangeText","pageIndicator","forecastText","todayCount","weekCount","dailyAverage"]);
-function isLanguageDynamicNode(el){
- if(!el)return false;
- if(el.id && LANGUAGE_DYNAMIC_IDS.has(el.id))return true;
- return !!el.closest?.(LANGUAGE_DYNAMIC_SELECTOR);
-}
-function captureJapaneseUi(){
- document.querySelectorAll("body *").forEach(el=>{
-   // Never snapshot live project values. In Japanese mode the old snapshot restore
-   // was writing startup values such as 0% / 0P back over freshly rendered data.
-   if(!isLanguageDynamicNode(el) && el.children.length===0 && !el.matches("script,style,input,textarea,option")){
-     const s=el.textContent.trim();
-     if(s) STATIC_JA_SNAPSHOT.set(el,s);
-   }
- });
- document.querySelectorAll("input[placeholder],textarea[placeholder]").forEach(el=>{
-   el.dataset.jaPlaceholder=el.getAttribute("placeholder")||"";
- });
-}
-function restoreJapaneseStaticUi(){
- STATIC_JA_SNAPSHOT.forEach((txt,el)=>{
-   if(el?.isConnected && !isLanguageDynamicNode(el) && el.children.length===0) el.textContent=txt;
- });
- document.querySelectorAll("[data-ja-placeholder]").forEach(el=>el.setAttribute("placeholder",el.dataset.jaPlaceholder));
- document.title="漫画制作進捗";
- document.documentElement.lang="ja";
+/* ---- Deterministic runtime language switch ----
+   Keep user-authored project/folder/stage/note text untouched.
+   Re-render first, then localize fixed/dynamic UI in one direction. */
+const JA_STATIC_BY_ID={
+  memoListButton:"メモ一覧",
+  settingsTitle:"アプリ設定",
+  settingsDefaultsTitle:"新規作品のデフォルト",
+  settingsPagesLabel:"制作ページ",
+  settingsStagesLabel:"工程",
+  defaultStageAdd:"＋ 工程を追加",
+  settingsNote:"新しい作品を作るときの初期値です。作品ごとに変更できます。",
+  settingsCancel:"キャンセル",settingsSave:"保存"
+};
+function restoreKnownJapaneseUi(){
+  Object.entries(JA_STATIC_BY_ID).forEach(([id,txt])=>{const el=document.getElementById(id);if(el)el.textContent=txt});
+  document.title="漫画制作進捗";
+  document.documentElement.lang="ja";
 }
 function rerenderCurrentViewForLanguage(){
- // Re-render from data so dynamically generated text follows the current language state.
- try{
-   if(currentProjectId && projectStore.projects[currentProjectId]){
-     render();
-   }else{
-     renderProjectList();
-     if(typeof renderFoldersAndFilter==="function")renderFoldersAndFilter();
-   }
- }catch(e){}
+  try{
+    if(currentProjectId && projectStore.projects[currentProjectId]){
+      render();
+      renderProjectBreadcrumb();
+    }else{
+      renderProjectList();
+      if(typeof renderFoldersAndFilter==="function")renderFoldersAndFilter();
+    }
+  }catch(e){}
 }
 function applyCurrentLanguageNow(){
- syncSplitSettings();
- if(languageSettings.language==="ja"){
-   restoreJapaneseStaticUi();
-   rerenderCurrentViewForLanguage();
- }else{
-   // Start from the Japanese source UI before applying English.
-   restoreJapaneseStaticUi();
-   rerenderCurrentViewForLanguage();
-   applyLanguage();
-   translateExactText(document);
-   translateUiPatterns(document);
- }
+  syncSplitSettings();
+  rerenderCurrentViewForLanguage();
+  if(languageSettings.language==="en"){
+    applyLanguage();
+    translateExactText(document);
+    translateUiPatterns(document);
+  }else{
+    restoreKnownJapaneseUi();
+    // render() is the Japanese source of truth for all dynamic labels.
+    rerenderCurrentViewForLanguage();
+  }
+  if(currentProjectId && projectStore.projects[currentProjectId])updateSummary();
 }
-captureJapaneseUi();
-
-/* Replace the final settings save behavior with an immediate, reload-free switch. */
-const finalSettingsSave=document.getElementById("settingsSave");
-finalSettingsSave.onclick=()=>{
- let a=Math.max(1,Math.min(999,Number(document.getElementById("defaultStartPage").value)||1));
- let b=Math.max(a,Math.min(999,Number(document.getElementById("defaultEndPage").value)||a));
- if(b-a+1>300){alert(uiLang()==="en"?"Up to 300 pages per project.":"1作品300ページまでです。");return}
- let selected=document.getElementById("appLanguage").value==="en"?"en":"ja";
- let ss=defaultStageDraft.map(x=>String(x||"").trim()).filter(Boolean);
- if(!ss.length)return;
-
- const jaDefault=ss.length===JA_STAGE_DEFAULTS.length&&ss.every((x,i)=>x===JA_STAGE_DEFAULTS[i]);
- const enDefault=ss.length===EN_STAGE_DEFAULTS.length&&ss.every((x,i)=>x===EN_STAGE_DEFAULTS[i]);
- if(selected==="en"&&jaDefault)ss=[...EN_STAGE_DEFAULTS];
- if(selected==="ja"&&enDefault)ss=[...JA_STAGE_DEFAULTS];
-
- appSettings=normalizeAppSettings({
-   language:selected,
-   defaultStartPage:a,
-   defaultEndPage:b,
-   defaultStages:ss
- });
- persistAppSettings();
- document.getElementById("appSettingsModal").classList.remove("open");
- applyCurrentLanguageNow();
-};
-
-/* Any project/folder navigation gets a fresh language pass. */
-document.addEventListener("click",()=>{
- setTimeout(()=>{
-   if(languageSettings.language==="en"){
-     translateExactText(document);translateUiPatterns(document);
-   }else{
-     // Restore labels only, then redraw live project values. Dynamic values are
-     // explicitly excluded from the Japanese snapshot above.
-     restoreJapaneseStaticUi();
-     if(currentProjectId && projectStore.projects[currentProjectId]) updateSummary();
-   }
- },0);
-},true);
-
-setTimeout(applyCurrentLanguageNow,0);
-
-/* ---- extracted script block ---- */
-
 /* ---- Separate Language UI and Project Defaults UI ---- */
 function updateLanguageButtons(){
  document.querySelectorAll(".language-option").forEach(b=>b.classList.toggle("active",b.dataset.lang===languageSettings.language));

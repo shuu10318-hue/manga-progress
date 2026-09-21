@@ -367,6 +367,192 @@ body.project-reorder-mode .project-item::before{content:none!important}
 #folderHeadTitle{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .folder-rename{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 9px;font-size:11px;white-space:nowrap}
 </style>
+<style>
+.home-head-actions{display:flex;gap:8px;align-items:center}
+.settings-button{width:44px;height:44px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:18px}
+.settings-sheet{max-height:88dvh;overflow-y:auto;box-sizing:border-box}
+.settings-section-title{font-size:14px;font-weight:800;margin:20px 0 12px;padding-top:14px;border-top:1px solid var(--border)}
+#appLanguage{width:100%;height:44px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 10px;font-size:14px}
+</style><style>
+.language-sheet{max-width:420px}
+.language-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 8px}
+.language-option{height:52px;border:1px solid var(--border);border-radius:11px;background:#fff;font-weight:700;font-size:15px}
+.language-option.active{background:#222;color:#fff;border-color:#222}
+.settings-first-section{margin-top:4px!important;padding-top:0!important;border-top:0!important}
+@media(max-width:430px){.home-head-actions{gap:6px}.settings-button{width:42px}.project-add-button{padding-left:13px!important;padding-right:13px!important}}
+</style><style>
+.current-project-title-wrap{margin:0 0 14px;padding:0 2px}
+.current-project-title-label{font-size:11px;color:var(--muted);margin-bottom:2px;font-weight:600}
+.current-project-title{font-size:20px;line-height:1.35;font-weight:800;overflow-wrap:anywhere}
+</style><style>
+#projectHome .folder-item{
+  -webkit-touch-callout:none;
+}
+</style><style>
+#projectHome .folder-item,
+#projectHome .project-item{
+  -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;
+  user-select:none;
+}
+</style>
+<style id="hierarchyNavStyle">
+.project-breadcrumb{
+  margin:-2px 2px 12px;
+  font-size:12px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.project-breadcrumb .crumb-sep{padding:0 5px;opacity:.6}
+.project-breadcrumb .crumb-current{font-weight:700;color:var(--text)}
+</style>
+<style id="breadcrumbNavigationStyle">
+.project-breadcrumb{
+  display:flex;align-items:center;
+  margin:-2px 2px 12px;
+  font-size:13px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;
+}
+.crumb-link{
+  appearance:none!important;-webkit-appearance:none!important;
+  border:0!important;background:transparent!important;
+  padding:4px 0!important;margin:0!important;
+  width:auto!important;height:auto!important;min-width:0!important;
+  color:#666!important;font:inherit!important;
+  line-height:1.4!important;white-space:nowrap!important;
+  writing-mode:horizontal-tb!important;
+}
+.crumb-link:active{opacity:.5}
+.crumb-sep{padding:0 7px;color:#aaa;flex:none}
+.crumb-current{font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis}
+#folderHead{display:flex;align-items:center;gap:10px}
+#folderHead .folder-head-title{
+  flex:1;min-width:0;display:flex;align-items:center;
+  white-space:nowrap;overflow:hidden;
+}
+</style>
+
+<style id="compactUnifiedBreadcrumbStyle">
+/* 大見出しは場所を取るので非表示 */
+#projectHome .project-home-head > h1,
+#editorApp .top-title > h1{
+  display:none!important;
+}
+
+/* 作品一覧：操作ボタンだけ右寄せ */
+#projectHome .project-home-head{
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  min-height:44px!important;
+  margin-bottom:14px!important;
+}
+#projectHome .home-head-actions{
+  margin-left:auto!important;
+}
+
+/* プロジェクト：メモ一覧だけ右寄せ */
+#editorApp .top-title{
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  min-height:44px!important;
+  margin-bottom:10px!important;
+}
+#editorApp .top-actions{
+  margin-left:auto!important;
+}
+
+/* フォルダとプロジェクトのパンくずを同じ見た目・位置へ */
+#folderHead,
+#projectBreadcrumb{
+  box-sizing:border-box!important;
+  min-height:40px!important;
+  margin:0 0 14px 0!important;
+  padding:0 2px!important;
+  font-size:14px!important;
+  line-height:1.4!important;
+  color:var(--muted)!important;
+}
+#folderHead{
+  display:flex!important;
+  align-items:center!important;
+}
+#folderHead .folder-head-title{
+  display:flex!important;
+  align-items:center!important;
+  flex:1!important;
+  min-width:0!important;
+  font-size:14px!important;
+  line-height:1.4!important;
+  font-weight:400!important;
+}
+#projectBreadcrumb{
+  display:flex!important;
+  align-items:center!important;
+}
+
+/* パンくずリンクのサイズも完全統一 */
+#folderHead .crumb-link,
+#projectBreadcrumb .crumb-link,
+#folderHead .crumb-current,
+#projectBreadcrumb .crumb-current{
+  font-size:14px!important;
+  line-height:1.4!important;
+}
+#folderHead .crumb-link,
+#projectBreadcrumb .crumb-link{
+  padding:6px 0!important;
+}
+
+/* プロジェクト名はパンくずにも出るので、大きい重複タイトルを隠す */
+#editorApp .current-project-title-wrap{
+  display:none!important;
+}
+
+/* フォルダ側の編集操作は同じ行の右側 */
+#folderHead #folderRename,
+#folderHead #folderDelete{
+  flex:none!important;
+}
+</style>
+<style id="breadcrumbGeometryFix">
+/* 3画面でパンくずの開始位置・高さ・余白を固定 */
+#projectHome #folderHead,
+#editorApp #projectBreadcrumb{
+  height:40px!important;
+  min-height:40px!important;
+  margin:0 0 14px 0!important;
+  padding:0 2px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  font-size:14px!important;
+  line-height:20px!important;
+}
+#projectHome #folderHeadTitle{
+  height:40px!important;
+  min-height:40px!important;
+  display:flex!important;
+  align-items:center!important;
+  font-size:14px!important;
+  line-height:20px!important;
+}
+/* 上の操作バーも同じ高さにしてパンくずのY位置を揃える */
+#projectHome .project-home-head,
+#editorApp .top-title{
+  height:44px!important;
+  min-height:44px!important;
+  margin:0 0 10px 0!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+}
+/* rootではフォルダ操作を隠して作品一覧だけ表示 */
+#projectHome #folderHead .crumb-current,
+#editorApp #projectBreadcrumb .crumb-current{
+  font-size:14px!important;
+  line-height:20px!important;
+}
+</style>
 </head>
 <body>
 
@@ -414,17 +600,18 @@ body.project-reorder-mode .project-item::before{content:none!important}
 
 <div id="projectHome" style="display:none">
   <div class="project-home-head">
-    <h1>作品一覧</h1>
-    <button id="newProjectButton" class="project-add-button">＋ 新しい作品</button>
+    <h1 id="homeTitle">作品一覧</h1>
+    <div class="home-head-actions"><button id="languageButton" class="settings-button language-button" type="button" aria-label="Language">🌐</button><button id="appSettingsButton" class="settings-button" type="button" aria-label="設定">⚙️</button><button id="newProjectButton" class="project-add-button">＋ 新しい作品</button></div>
   </div>
-  <div id="folderHead" class="folder-head"><button id="folderBack" class="folder-back" type="button">← 戻る</button><div id="folderHeadTitle" class="folder-head-title"></div><button id="folderRename" class="folder-rename" type="button">名前変更</button><button id="folderDelete" class="folder-remove" type="button">削除</button></div>
+  <div id="folderHead" class="folder-head"><div id="folderHeadTitle" class="folder-head-title"></div><button id="folderRename" class="folder-rename" type="button">名前変更</button><button id="folderDelete" class="folder-remove" type="button">削除</button></div>
 <div id="folderToolbar" class="folder-toolbar"><button id="folderAdd" class="folder-add" type="button">＋ フォルダ</button></div>
 <div id="projectList"></div>
   <div class="project-backup-note">作品ごとの進捗・付箋・作業履歴は端末内に自動保存されます。</div>
 </div>
 
 <div class="app" id="editorApp" style="display:none">
-<div class="top-title"><h1>漫画制作進捗</h1><div class="top-actions"><button id="memoListButton" class="memo-list-button">メモ一覧</button><button id="backToProjects" class="project-list-button">作品一覧</button></div></div>
+<div class="top-title"><h1>漫画制作進捗</h1><div class="top-actions"><button id="memoListButton" class="memo-list-button">メモ一覧</button></div></div>
+<div class="current-project-title-wrap"><div class="current-project-title-label" id="currentProjectTitleLabel">作品</div><div id="currentProjectTitle" class="current-project-title"></div></div><div id="projectBreadcrumb" class="project-breadcrumb"></div>
 <div class="card" style="display:none">
 <div class="label">作品名</div><input id="title" value="ばちぼこゾンビランド" placeholder="作品名">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;margin-bottom:7px">
@@ -530,6 +717,40 @@ body.project-reorder-mode .project-item::before{content:none!important}
   </div>
 </div>
 
+<select id="appLanguage" style="display:none"><option value="ja">日本語</option><option value="en">English</option></select>
+<div id="languageModal" class="project-modal">
+  <div class="project-sheet language-sheet">
+    <h2 id="languageModalTitle">Language</h2>
+    <div class="language-choice">
+      <button type="button" class="language-option" data-lang="ja">日本語</button>
+      <button type="button" class="language-option" data-lang="en">English</button>
+    </div>
+    <div class="project-modal-actions">
+      <button id="languageCancel" class="project-cancel-button">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div id="appSettingsModal" class="project-modal">
+  <div class="project-sheet settings-sheet">
+    <h2 id="settingsTitle">アプリ設定</h2>
+    <div class="settings-section-title settings-first-section" id="settingsDefaultsTitle">新規作品のデフォルト</div>
+    <div class="label" id="settingsPagesLabel">制作ページ</div>
+    <div class="page-range">
+      <div><input id="defaultStartPage" type="number" min="1" max="999"><span>P</span></div><b>〜</b>
+      <div><input id="defaultEndPage" type="number" min="1" max="999"><span>P</span></div>
+    </div>
+    <div class="label" id="settingsStagesLabel" style="margin-top:14px">工程</div>
+    <div id="defaultStageList" class="stage-editor-list"></div>
+    <button id="defaultStageAdd" class="stage-add-button" type="button">＋ 工程を追加</button>
+    <div class="stage-editor-note" id="settingsNote">新しい作品を作るときの初期値です。作品ごとに変更できます。</div>
+    <div class="project-modal-actions">
+      <button id="settingsCancel" class="project-cancel-button">キャンセル</button>
+      <button id="settingsSave" class="project-create-button">保存</button>
+    </div>
+  </div>
+</div>
+
 <div id="projectModal" class="project-modal">
   <div class="project-sheet">
     <h2>新しい作品</h2>
@@ -601,9 +822,69 @@ body.project-reorder-mode .project-item::before{content:none!important}
 const STORAGE_KEY="manga-progress-v1"; // 旧版データ。移行元として残す
 const PROJECTS_KEY="manga-progress-projects-v2";
 const VIEW_STATE_KEY="manga-progress-view-state-v1";
+const APP_SETTINGS_KEY="manga-progress-app-settings-v1";
+let appSettings=null;
+let languageSettings={language:"ja"};
+let projectDefaults={startPage:1,endPage:48,stages:[]};
 let projectStore={version:2,activeProjectId:null,projects:{}};
 let currentProjectId=null;
 const DEFAULT_STAGES=["ネーム","ペン","背景","トーン","写植"];
+
+const UI_TEXT={
+ ja:{home:"作品一覧",newProject:"＋ 新しい作品",settings:"アプリ設定",language:"言語",defaults:"新規作品のデフォルト",pages:"制作ページ",stages:"工程",addStage:"＋ 工程を追加",cancel:"キャンセル",save:"保存",note:"新しい作品を作るときの初期値です。作品ごとに変更できます。",folderAdd:"＋ フォルダ",memo:"メモ一覧",backProjects:"作品一覧"},
+ en:{home:"Projects",newProject:"+ New Project",settings:"App Settings",language:"Language",defaults:"New Project Defaults",pages:"Pages",stages:"Stages",addStage:"+ Add Stage",cancel:"Cancel",save:"Save",note:"These are the initial values for new projects. Each project can be changed separately.",folderAdd:"+ Folder",memo:"Notes",backProjects:"Projects"}
+};
+function normalizeAppSettings(raw){
+ const lang=raw?.language==="en"?"en":"ja";
+ let a=Math.max(1,Math.min(999,Number(raw?.defaultStartPage)||1));
+ let b=Math.max(a,Math.min(999,Number(raw?.defaultEndPage)||48));
+ if(b-a+1>300)b=a+299;
+ let ss=Array.isArray(raw?.defaultStages)?raw.defaultStages.map(x=>String(x||"").trim()).filter(Boolean).slice(0,8):[];
+ if(!ss.length)ss=[...DEFAULT_STAGES];
+ return {language:lang,defaultStartPage:a,defaultEndPage:b,defaultStages:ss};
+}
+function syncSplitSettings(){
+ languageSettings={language:appSettings?.language==="en"?"en":"ja"};
+ projectDefaults={
+   startPage:appSettings?.defaultStartPage||1,
+   endPage:appSettings?.defaultEndPage||48,
+   stages:[...(appSettings?.defaultStages||DEFAULT_STAGES)]
+ };
+}
+function loadAppSettings(){
+ try{appSettings=normalizeAppSettings(JSON.parse(localStorage.getItem(APP_SETTINGS_KEY)||"null"))}
+ catch(e){appSettings=normalizeAppSettings(null)}
+ syncSplitSettings();
+}
+function persistAppSettings(){
+ syncSplitSettings();
+ localStorage.setItem(APP_SETTINGS_KEY,JSON.stringify(appSettings));
+}
+function applyLanguage(){
+ const t=UI_TEXT[languageSettings.language]||UI_TEXT.ja;
+ document.documentElement.lang=languageSettings.language;
+ const set=(id,s)=>{const e=document.getElementById(id);if(e)e.textContent=s};
+ set("homeTitle",t.home); set("newProjectButton",t.newProject); set("settingsTitle",t.settings);
+ set("settingsLanguageLabel",t.language);set("settingsDefaultsTitle",t.defaults);set("settingsPagesLabel",t.pages);
+ set("settingsStagesLabel",t.stages);set("defaultStageAdd",t.addStage);set("settingsCancel",t.cancel);set("settingsSave",t.save);set("settingsNote",t.note);
+ set("folderAdd",t.folderAdd);set("memoListButton",t.memo);set("backToProjects",t.backProjects);
+}
+let defaultStageDraft=[];
+function renderDefaultStageEditor(){
+ const box=document.getElementById("defaultStageList"); if(!box)return; box.innerHTML="";
+ defaultStageDraft.forEach((name,i)=>{
+   const row=document.createElement("div");row.className="stage-editor-row";
+   row.innerHTML=`<input type="text" maxlength="12"><button type="button" class="stage-mini-button" data-act="up">↑</button><button type="button" class="stage-mini-button" data-act="down">↓</button><button type="button" class="stage-mini-button danger" data-act="del">×</button>`;
+   const input=row.querySelector("input");input.value=name;input.oninput=()=>defaultStageDraft[i]=input.value;
+   row.querySelector('[data-act="up"]').onclick=()=>{if(i){[defaultStageDraft[i-1],defaultStageDraft[i]]=[defaultStageDraft[i],defaultStageDraft[i-1]];renderDefaultStageEditor()}};
+   row.querySelector('[data-act="down"]').onclick=()=>{if(i<defaultStageDraft.length-1){[defaultStageDraft[i+1],defaultStageDraft[i]]=[defaultStageDraft[i],defaultStageDraft[i+1]];renderDefaultStageEditor()}};
+   row.querySelector('[data-act="del"]').onclick=()=>{if(defaultStageDraft.length<=1)return;defaultStageDraft.splice(i,1);renderDefaultStageEditor()};
+   box.appendChild(row);
+ });
+ document.getElementById("defaultStageAdd").disabled=defaultStageDraft.length>=8;
+}
+
+loadAppSettings();
 let stages=[...DEFAULT_STAGES];
 let totalPages=48,startPage=1,currentView=0,progress=createProgress(48);
 let history={day:"",baselineDone:0,days:{}};
@@ -751,6 +1032,8 @@ function applyProjectData(s){
   stages=[...(p.stages||DEFAULT_STAGES)];
   pageNotes=p.pageNotes;
   document.getElementById("title").value=p.title;
+  const currentTitleEl=document.getElementById("currentProjectTitle");
+  if(currentTitleEl)currentTitleEl.textContent=p.title;
   document.getElementById("creationStartDateInput").value=p.creationStartDate||"";
   document.getElementById("deadlineInput").value=p.deadline||"";
   history=p.history?normalizeHistory(p.history):{day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
@@ -769,6 +1052,55 @@ function loadViewState(){
   try{return JSON.parse(localStorage.getItem(VIEW_STATE_KEY)||"null")}catch(e){return null}
 }
 
+
+function renderRootBreadcrumb(){
+  const head=document.getElementById("folderHead");
+  const title=document.getElementById("folderHeadTitle");
+  if(!head||!title||currentFolderId)return;
+  head.style.display="";
+  title.innerHTML='<span class="crumb-current">作品一覧</span>';
+  const rename=document.getElementById("folderRename");
+  const del=document.getElementById("folderDelete");
+  if(rename)rename.style.display="none";
+  if(del)del.style.display="none";
+}
+
+function projectParentFolderId(id){
+  const p=projectStore.projects[id];
+  const fid=p?.folderId||null;
+  return fid&&projectStore.folders?.[fid]?fid:null;
+}
+function renderProjectBreadcrumb(){
+  const el=document.getElementById("projectBreadcrumb");
+  if(!el||!currentProjectId)return;
+  const p=projectStore.projects[currentProjectId];
+  const fid=projectParentFolderId(currentProjectId);
+  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const projectName=esc(p?.title||"プロジェクト");
+  if(fid){
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+  }else{
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+  }
+}
+function showFolderView(folderId){
+  if(!folderId||!projectStore.folders?.[folderId]){showProjectHome();return}
+  if(currentProjectId)save();
+  currentProjectId=null;
+  currentFolderId=folderId;
+  document.getElementById("editorApp").style.display="none";
+  document.getElementById("projectHome").style.display="";
+  document.body.style.overflowY="auto";
+  document.body.style.overflowX="hidden";
+  renderProjectList();
+  renderFoldersAndFilter();
+  saveViewState("folder");
+}
+function backFromProject(){
+  const fid=projectParentFolderId(currentProjectId);
+  if(fid)showFolderView(fid);
+  else showProjectHome();
+}
 function openProject(id){
   if(!projectStore.projects[id])return;
   currentProjectId=id;
@@ -778,6 +1110,7 @@ function openProject(id){
   document.getElementById("projectHome").style.display="none";
   document.getElementById("editorApp").style.display="";
   render();
+  renderProjectBreadcrumb();
   saveViewState("project");
 }
 function showProjectHome(){
@@ -789,8 +1122,25 @@ function showProjectHome(){
   document.body.style.overflowX="hidden";
   renderProjectList();
   currentFolderId=null;
+  renderFoldersAndFilter();
+  renderRootBreadcrumb();
   saveViewState("root");
 }
+document.addEventListener("click",e=>{
+  const crumb=e.target.closest?.(".crumb-link");
+  if(!crumb)return;
+  e.preventDefault();
+  e.stopPropagation();
+  if(crumb.dataset.nav==="root"){
+    showProjectHome();
+    renderFoldersAndFilter();
+    return;
+  }
+  if(crumb.dataset.nav==="folder"){
+    showFolderView(crumb.dataset.folderId);
+  }
+});
+
 function projectPercent(p){
   const vals=(p.progress||[]).flat();
   if(!vals.length)return 0;
@@ -851,7 +1201,12 @@ function load(){
   loadProjectStore();
 }
 function makeBackup(){
-  if(currentProjectId)projectStore.projects[currentProjectId]=makeProjectData();
+  if(currentProjectId){
+    const oldProject=projectStore.projects[currentProjectId]||{};
+    const snap=makeProjectData();
+    snap.folderId=oldProject.folderId||null;
+    projectStore.projects[currentProjectId]=snap;
+  }
   persistProjectStore();
   return {
     app:"manga-progress",
@@ -1284,7 +1639,7 @@ document.querySelectorAll(".memo-filter").forEach(btn=>btn.onclick=()=>{
   renderMemoList();
 });
 
-document.getElementById("backToProjects").onclick=showProjectHome;
+
 
 let newProjectStageDraft=[...DEFAULT_STAGES];
 function renderNewProjectStageEditor(){
@@ -1332,14 +1687,38 @@ document.getElementById("newStageAddButton").addEventListener("click",()=>{
   renderNewProjectStageEditor();
 });
 
+
+document.getElementById("appSettingsButton").onclick=()=>{
+ document.getElementById("defaultStartPage").value=projectDefaults.startPage;
+ document.getElementById("defaultEndPage").value=projectDefaults.endPage;
+ defaultStageDraft=[...projectDefaults.stages];renderDefaultStageEditor();
+ document.getElementById("appSettingsModal").classList.add("open");
+};
+document.getElementById("settingsCancel").onclick=()=>document.getElementById("appSettingsModal").classList.remove("open");
+document.getElementById("appSettingsModal").onclick=e=>{if(e.target.id==="appSettingsModal")e.currentTarget.classList.remove("open")};
+document.getElementById("defaultStageAdd").onclick=()=>{if(defaultStageDraft.length<8){defaultStageDraft.push(languageSettings.language==="en"?"New Stage":"新しい工程");renderDefaultStageEditor()}};
+document.getElementById("settingsSave").onclick=()=>{
+ let a=Math.max(1,Math.min(999,Number(document.getElementById("defaultStartPage").value)||1));
+ let b=Math.max(a,Math.min(999,Number(document.getElementById("defaultEndPage").value)||a));
+ if(b-a+1>300){alert(appSettings.language==="en"?"Up to 300 pages per project.":"1作品300ページまでです。");return}
+ const ss=defaultStageDraft.map(x=>String(x||"").trim()).filter(Boolean);
+ if(!ss.length)return;
+ appSettings=normalizeAppSettings({language:document.getElementById("appLanguage").value,defaultStartPage:a,defaultEndPage:b,defaultStages:ss});
+ persistAppSettings();applyLanguage();
+ document.getElementById("appSettingsModal").classList.remove("open");
+};
+
 document.getElementById("newProjectButton").onclick=()=>{
   document.getElementById("newProjectTitle").value="";
-  document.getElementById("newProjectStart").value=1;
-  document.getElementById("newProjectEnd").value=1;
+  document.getElementById("newProjectStart").value=projectDefaults.startPage;
+  document.getElementById("newProjectEnd").value=projectDefaults.endPage;
   document.getElementById("newProjectCreationStartDate").value="";
   document.getElementById("newProjectDeadline").value="";
-  document.getElementById("newProjectTotal").textContent="全1P";
-  resetNewProjectStages();
+  document.getElementById("newProjectTotal").textContent=`全${projectDefaults.endPage-projectDefaults.startPage+1}P`;
+  newProjectStageDraft=[...projectDefaults.stages];
+  renderNewProjectStageEditor();
+  document.getElementById("newStagePanel").classList.remove("open");
+  document.getElementById("newStageToggle").classList.remove("open");
   document.getElementById("projectModal").classList.add("open");
   setTimeout(()=>document.getElementById("newProjectTitle").focus(),50);
 };
@@ -1359,14 +1738,21 @@ document.getElementById("createNewProject").onclick=()=>{
   if(b-a+1>300){alert("1作品300ページまでです。");return;}
   const id=newProjectId();
   projectStore.projects[id]=freshProjectData(title,a,b);
-  const newStages=newProjectStageDraft.map((x,i)=>String(x||"").trim()||`工程${i+1}`);
+  // フォルダ内から作成した場合は、そのフォルダに所属させる
+  projectStore.projects[id].folderId=currentFolderId||null;
+  const newStages=newProjectStageDraft.map((x,i)=>String(x||"").trim()||(appSettings.language==="en"?`Stage ${i+1}`:`工程${i+1}`));
   projectStore.projects[id].stages=newStages;
   projectStore.projects[id].progress=Array.from({length:b-a+1},()=>Array(newStages.length).fill(0));
   projectStore.projects[id].creationStartDate=document.getElementById("newProjectCreationStartDate").value||"";
   projectStore.projects[id].deadline=document.getElementById("newProjectDeadline").value||"";
   projectStore.projectOrder=[id,...(Array.isArray(projectStore.projectOrder)?projectStore.projectOrder:[]).filter(x=>x!==id)];
   if(!Array.isArray(projectStore.rootOrder))projectStore.rootOrder=[];
-  projectStore.rootOrder=["p:"+id,...projectStore.rootOrder.filter(k=>k!=="p:"+id)];
+  // ルートで作成した作品だけ rootOrder に追加する
+  if(!currentFolderId){
+    projectStore.rootOrder=["p:"+id,...projectStore.rootOrder.filter(k=>k!=="p:"+id)];
+  }else{
+    projectStore.rootOrder=projectStore.rootOrder.filter(k=>k!=="p:"+id);
+  }
   projectStore.activeProjectId=id;
   persistProjectStore();
   document.getElementById("projectModal").classList.remove("open");
@@ -1687,8 +2073,11 @@ function renderFoldersAndFilter(){
  const head=document.getElementById("folderHead"),toolbar=document.getElementById("folderToolbar");
  if(currentFolderId&&projectStore.folders[currentFolderId]){
    head.classList.add("show");toolbar.style.display="none";
-   document.getElementById("folderHeadTitle").textContent="📁 "+projectStore.folders[currentFolderId].name;
-   saveViewState("folder");
+   document.getElementById("folderHeadTitle").innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><span class="crumb-current">${String(projectStore.folders[currentFolderId].name).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</span>`;
+ const renameBtn=document.getElementById("folderRename");
+ const deleteBtn=document.getElementById("folderDelete");
+ if(renameBtn)renameBtn.style.display="";
+ if(deleteBtn)deleteBtn.style.display="";
  }else{
    currentFolderId=null;head.classList.remove("show");toolbar.style.display="flex";
  }
@@ -1721,11 +2110,17 @@ function renderFoldersAndFilter(){
    Object.entries(projectStore.folders).forEach(([fid,f])=>{
      const el=document.createElement("div");el.className="folder-item";el.dataset.folderId=fid;el.dataset.orderKey="f:"+fid;
      el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon">📁</span> ${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</div><div class="folder-meta">${folderCount(fid)}作品</div></div></div>`;
-     el.addEventListener("click",e=>{
-       if(Date.now()<(window.__suppressMixedClickUntil||0))return;
-       if(e.target.closest("button,a,input,textarea,select,label"))return;
+     const openFolder=()=>{
        currentFolderId=fid;
        renderFoldersAndFilter();
+       saveViewState("folder");
+     };
+     // カード本体の短いタップでも開く。長押しドラッグ直後のclickは既存の抑制を尊重。
+     el.addEventListener("click",e=>{
+       if(e.target.closest("button,a,input,textarea,select,label"))return;
+       if(Date.now()<(window.__suppressMixedClickUntil||0))return;
+       if(window.__mixedRootDragging)return;
+       openFolder();
      });
      list.append(el);
    });
@@ -1735,6 +2130,7 @@ function renderFoldersAndFilter(){
    mixed.sort((a,b)=>(rank.get(a.dataset.orderKey)??999999)-(rank.get(b.dataset.orderKey)??999999));
    mixed.forEach(el=>list.append(el));
  }
+ if(!currentFolderId)renderRootBreadcrumb();
  requestAnimationFrame(()=>{folderRendering=false});
 }
 function createFolder(){
@@ -1763,66 +2159,14 @@ document.getElementById("folderBack")?.addEventListener("click",e=>{
  e.preventDefault();e.stopPropagation();
  currentFolderId=null;
  renderFoldersAndFilter();
+ saveViewState("root");
 });
-
-document.getElementById("folderRename")?.addEventListener("click",e=>{
- e.preventDefault();e.stopPropagation();
- if(!currentFolderId||!projectStore.folders[currentFolderId])return;
- const input=document.getElementById("folderRenameInput");
- input.value=projectStore.folders[currentFolderId].name||"";
- document.getElementById("folderRenameModal").classList.add("open");
- document.body.style.overflow="hidden";
- setTimeout(()=>{input.focus();input.select()},50);
-});
-document.getElementById("folderRenameCancel")?.addEventListener("click",()=>{
- document.getElementById("folderRenameModal").classList.remove("open");
- document.body.style.overflow="";
-});
-document.getElementById("folderRenameModal")?.addEventListener("click",e=>{
- if(e.target.id==="folderRenameModal"){
-   e.currentTarget.classList.remove("open");document.body.style.overflow="";
- }
-});
-document.getElementById("folderRenameSave")?.addEventListener("click",()=>{
- if(!currentFolderId||!projectStore.folders[currentFolderId])return;
- const input=document.getElementById("folderRenameInput");
- const name=input.value.trim();
- if(!name){alert("フォルダ名を入力してください。");return;}
- projectStore.folders[currentFolderId].name=name;
- persistProjectStore();
- document.getElementById("folderRenameModal").classList.remove("open");
- document.body.style.overflow="";
- renderFoldersAndFilter();
-});
-document.getElementById("folderRenameInput")?.addEventListener("keydown",e=>{
- if(e.key==="Enter"){e.preventDefault();document.getElementById("folderRenameSave").click()}
-});
-
 document.getElementById("folderDelete")?.addEventListener("click",()=>{
  if(!currentFolderId)return;
  const f=projectStore.folders[currentFolderId];if(!f)return;
  if(!confirm(`「${f.name}」を削除しますか？\n中の作品は作品一覧へ戻ります。`))return;
-
- const deletedFolderId=currentFolderId;
- Object.values(projectStore.projects).forEach(p=>{
-   if(p.folderId===deletedFolderId)p.folderId=null;
- });
- delete projectStore.folders[deletedFolderId];
-
- if(Array.isArray(projectStore.rootOrder)){
-   projectStore.rootOrder=projectStore.rootOrder.filter(k=>k!=="f:"+deletedFolderId);
- }
- currentFolderId=null;
- persistProjectStore();
-
- // 削除した瞬間にルート一覧へ戻して再描画
- document.getElementById("editorApp").style.display="none";
- document.getElementById("projectHome").style.display="";
- document.body.style.overflowY="auto";
- document.body.style.overflowX="hidden";
- saveViewState("root");
- renderProjectList();
- renderFoldersAndFilter();
+ Object.values(projectStore.projects).forEach(p=>{if(p.folderId===currentFolderId)p.folderId=null});
+ delete projectStore.folders[currentFolderId];currentFolderId=null;persistProjectStore();renderProjectHome();setTimeout(renderFoldersAndFilter,0);
 });
 
 
@@ -1833,6 +2177,7 @@ document.addEventListener("click",e=>{
     e.preventDefault();e.stopPropagation();
     currentFolderId=null;
     renderFoldersAndFilter();
+    saveViewState("root");
     return;
   }
   const eject=e.target.closest?.(".folder-eject");
@@ -2016,8 +2361,6 @@ document.addEventListener("touchend",()=>{
    else list.append(drag);
  },{capture:true,passive:false});
  list.addEventListener("touchend",e=>{
-   // 通常タップでも長押し判定タイマーを必ず止める。
-   // フォルダを開いた後に遅れてバイブするのを防ぐ。
    clearTimeout(hold);hold=null;
    if(!drag)return;
    e.stopImmediatePropagation(); finish();
@@ -2035,6 +2378,7 @@ document.addEventListener("touchend",()=>{
 })();
 
 ensureFolders();
+applyLanguage();
 
 // 全イベント・フォルダ機能の初期化が終わってから、前回の表示位置を1回だけ復元する。
 setTimeout(()=>{
@@ -2061,6 +2405,522 @@ setTimeout(()=>{
   renderFoldersAndFilter();
 },0);
 
+</script>
+
+<script>
+/* Full-app UI language layer. User-entered titles, folder names, notes and custom stage names are never translated. */
+const FULL_I18N={
+ en:{
+ "作品一覧":"Projects","＋ 新しい作品":"+ New Project","＋ フォルダ":"+ Folder","← 戻る":"← Back","名前変更":"Rename","削除":"Delete",
+ "漫画制作進捗":"Manga Production Tracker","メモ一覧":"Notes","作品名":"Project title","制作ページ数":"Pages","制作ページ":"Pages",
+ "創作開始日":"Start date","締切予定日":"Deadline","総合進捗":"Overall Progress","工程別進捗":"Progress by Stage","工程表":"Production Table",
+ "作業履歴":"Work History","今日":"Today","直近7日":"Last 7 days","1日平均":"Daily average","完成予想":"Estimated Completion",
+ "← 前":"← Prev","次 →":"Next →","未着手":"Not started","着手中":"In progress","完成済み":"Completed","着手":"Started","完成":"Completed",
+ "新しい作品":"New Project","作品編集":"Edit Project","工程設定":"Stage Settings","工程をカスタマイズ":"Customize Stages",
+ "＋ 工程を追加":"+ Add Stage","キャンセル":"Cancel","保存":"Save","作成":"Create","編集":"Edit","この作品を削除":"Delete Project",
+ "新しいフォルダ":"New Folder","フォルダ名":"Folder name","フォルダ名を変更":"Rename Folder","フォルダから戻す":"Move out of folder",
+ "付箋":"Page Note","付箋を削除":"Delete Note","閉じる":"Close","すべて":"All","赤":"Red","黄":"Yellow","青":"Blue","緑":"Green","移動":"Go",
+ "使い方":"Help","工程マスをタップ":"Tap a stage cell","長押し＋スライド":"Long press + slide","左右にスワイプ":"Swipe left/right",
+ "ページ番号をタップ":"Tap a page number","進捗と完成予想":"Progress & forecast","バックアップ":"Backup","マーカー":"Legend",
+ "💾 バックアップ":"💾 Backup","📂 復元":"📂 Restore","工程":"Stages","工程名":"Stage name","上へ":"Up","下へ":"Down",
+ "言語":"Language","アプリ設定":"App Settings","新規作品のデフォルト":"New Project Defaults","設定":"Settings",
+ "全工程":"All stages","締切":"Deadline","ページ":"Pages","未設定":"Not set","完了":"Done","完成工程":"completed stages",
+ "データ収集中":"Collecting data","完成！":"Complete!","変更は自動保存されます":"Changes are saved automatically",
+ "保存しました ✓":"Saved ✓","該当するメモはありません。":"No matching notes.","（メモ本文なし）":"(No note text)",
+ "修正点・忘れたくないことなど":"Corrections, reminders, etc.",
+ "工程名の変更・並び替え・追加・削除（最大8工程）":"Rename, reorder, add or delete stages (max 8).",
+ "新しい作品を作るときの初期値です。作品ごとに変更できます。":"Initial values for new projects. You can change them for each project.",
+ "作品ごとの進捗・付箋・作業履歴は端末内に自動保存されます。":"Project progress, notes and work history are saved automatically on this device.",
+ "まだ作品がありません。":"No projects yet.","「＋ 新しい作品」から作成できます。":"Create one with “+ New Project”.",
+ "着手=0.5工程として直近7日から算出":"Calculated from the last 7 days, counting in-progress as 0.5 stage.",
+ "全作品のページ数・進捗・付箋・作業履歴を1つのJSONに保存します。":"Save all projects, progress, notes and work history in one JSON file.",
+ "Chromeのダウンロード一覧または端末の「Downloads」を確認してください。":"Check Chrome downloads or the device Downloads folder.",
+ "JSONバックアップには作品・進捗・作業履歴・付箋などのデータを保存します。大きな変更の前にもバックアップしておくと安心です。":"JSON backup stores projects, progress, work history and notes. Back up before major changes.",
+ "タップするたびに「未着手 → 着手 → 完了 → 未着手」と切り替わります。":"Each tap cycles: Not started → In progress → Complete → Not started.",
+ "工程マスを約0.5秒長押しして、そのまま同じ工程をなぞると、最初のマスの状態を連続コピーできます。振動したらコピー開始です。":"Long-press a stage cell for about 0.5 seconds, then slide along the same stage to copy its state. Copying starts when the device vibrates.",
+ "工程表を左右にスワイプすると、12ページずつ移動できます。「前」「次」ボタンでも移動できます。":"Swipe the production table left or right to move 12 pages at a time. You can also use Prev and Next.",
+ "そのページに付箋メモを付けられます。赤・黄・青・緑で分類でき、「メモ一覧」から絞り込みやページ移動もできます。":"Add a note to a page and classify it by red, yellow, blue or green. Filter notes and jump to pages from Notes.",
+ "着手率・完成率・工程別進捗を自動集計します。作業履歴から完成予想を計算し、締切を設定している場合は必要ペースも確認できます。":"Automatically summarizes started/completed rates and stage progress. Work history is used to estimate completion and required pace when a deadline is set."
+ }};
+const JA_STAGE_DEFAULTS=["ネーム","ペン","背景","トーン","写植"];
+const EN_STAGE_DEFAULTS=["Storyboard","Line Art","Background","Tone","Lettering"];
+function uiLang(){return languageSettings?.language==="en"?"en":"ja"}
+function translateExactText(root=document){
+ if(uiLang()!=="en")return;
+ const map=FULL_I18N.en;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+ nodes.forEach(n=>{
+   if(n.parentElement?.closest("input,textarea,option"))return;
+   const raw=n.nodeValue,trim=raw.trim();
+   if(map[trim])n.nodeValue=raw.replace(trim,map[trim]);
+ });
+ document.querySelectorAll('input[placeholder]').forEach(el=>{
+   const p=el.getAttribute("placeholder");if(map[p])el.setAttribute("placeholder",map[p]);
+ });
+}
+function translateDynamicEnglish(root=document){
+ if(uiLang()!=="en")return;
+ translateExactText(root);
+ root.querySelectorAll?.("*").forEach(el=>{
+   if(el.children.length||el.closest("input,textarea"))return;
+   let s=el.textContent;
+   s=s.replace(/^全(\d+)P$/,"$1 pages")
+      .replace(/^完成 (\d+) \/ (\d+)P$/,"Completed $1 / $2 pages")
+      .replace(/^着手 (\d+)% ・ 完成 (\d+)%$/,"Started $1% · Completed $2%")
+      .replace(/^あと約(\d+)日$/,"About $1 days")
+      .replace(/^締切まで あと(\d+)日$/,"$1 days until deadline")
+      .replace(/^締切を (\d+)日超過$/,"$1 days past deadline")
+      .replace(/^(\d+)作品$/,"$1 projects")
+      .replace(/^(\d+)P 付箋$/,"Page $1 note")
+      .replace(/^全工程完了$/,"All stages complete");
+   el.textContent=s;
+ });
+}
+const _applyLanguage=applyLanguage;
+applyLanguage=function(){
+ _applyLanguage();
+ translateDynamicEnglish(document);
+};
+const languageObserver=new MutationObserver(muts=>{
+ if(uiLang()!=="en")return;
+ muts.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)translateDynamicEnglish(n);else if(n.nodeType===3&&FULL_I18N.en[n.nodeValue.trim()])n.nodeValue=FULL_I18N.en[n.nodeValue.trim()]}));
+});
+languageObserver.observe(document.body,{subtree:true,childList:true});
+
+/* Localized dialogs without touching user data */
+const _alert=window.alert.bind(window),_confirm=window.confirm.bind(window);
+window.alert=(msg)=>{
+ if(uiLang()==="en"){
+   msg=String(msg).replace("1作品300ページまでです。","Up to 300 pages per project.")
+    .replace("工程は1つ以上必要です。","At least one stage is required.")
+    .replace("フォルダ名を入力してください。","Enter a folder name.")
+    .replace("❌ このバックアップファイルは読み込めませんでした。","❌ This backup file could not be read.")
+    .replace("❌ バックアップを保存できませんでした。","❌ Backup could not be saved.")
+    .replace("✅ 全作品のバックアップを保存しました。","✅ All projects were backed up.")
+    .replace("✅ 全作品のバックアップを復元しました。","✅ All projects were restored.")
+    .replace("✅ 1作品を新しいプロジェクトとして復元しました。","✅ One project was restored as a new project.");
+ }
+ return _alert(msg);
+};
+window.confirm=(msg)=>{
+ if(uiLang()==="en"){
+   msg=String(msg)
+    .replace(/「(.+?)」を削除しますか？\n中の作品は作品一覧へ戻ります。/,'Delete “$1”?\\nProjects inside will be moved back to Projects.')
+    .replace(/「(.+?)」を削除しますか？\nこの操作は元に戻せません。/,'Delete “$1”?\\nThis action cannot be undone.');
+ }
+ return _confirm(msg);
+};
+
+/* On first switch to English only, translate untouched Japanese default stages.
+   Customized defaults are preserved exactly. */
+const _settingsSaveClick=document.getElementById("settingsSave").onclick;
+document.getElementById("settingsSave").onclick=()=>{
+ const oldLang=appSettings.language;
+ const selected=document.getElementById("appLanguage").value;
+ const untouched=defaultStageDraft.length===JA_STAGE_DEFAULTS.length&&defaultStageDraft.every((x,i)=>x===JA_STAGE_DEFAULTS[i]);
+ if(oldLang!=="en"&&selected==="en"&&untouched){
+   defaultStageDraft=[...EN_STAGE_DEFAULTS];
+ }
+ _settingsSaveClick();
+ setTimeout(()=>translateDynamicEnglish(document),0);
+};
+</script>
+
+<script>
+/* ---- i18n completion patch ---- */
+const I18N_MORE_EN={
+ "作品編集":"Edit Project","作品名":"Project title","制作ページ":"Pages","制作ページ数":"Pages",
+ "創作開始日":"Start date","締切予定日":"Deadline","工程設定":"Stage Settings",
+ "工程をカスタマイズ":"Customize Stages","工程名":"Stage name",
+ "変更しなければ「ネーム・ペン・背景・トーン・写植」で作成されます":"If unchanged, the default stages will be used.",
+ "工程名の変更・並び替え・追加・削除（最大8工程）":"Rename, reorder, add or delete stages (max 8).",
+ "変更は自動保存されます":"Changes are saved automatically",
+ "完成":"Completed","着手":"Started","全工程":"All stages","締切":"Deadline",
+ "ページ":"Pages","未設定":"Not set","無題":"Untitled",
+ "この工程":"This stage","全工程完了":"All stages complete",
+ "完成予想との差分は、作業履歴がたまると表示":"The forecast comparison appears after enough work history is collected.",
+ "新しい工程":"New Stage"
+};
+Object.assign(FULL_I18N.en,I18N_MORE_EN);
+
+function translateUiPatterns(root=document){
+ if(uiLang()!=="en")return;
+ const els=(root===document?[...document.querySelectorAll("*")]:
+   [root,...(root.querySelectorAll?[...root.querySelectorAll("*")]:[])]);
+ for(const el of els){
+   if(!el || el.children.length || el.matches?.("script,style,input,textarea,option"))continue;
+   const raw=el.textContent, s=raw.trim();
+   if(!s)continue;
+   let x=s;
+   if(FULL_I18N.en[x]) x=FULL_I18N.en[x];
+   else{
+     x=x.replace(/^全(\d+)P$/,"$1 pages")
+       .replace(/^(\d+)–(\d+) \/ 全(\d+)P$/,"$1–$2 / $3 pages")
+       .replace(/^完成\s*(\d+)\s*\/\s*(\d+)P$/,"Completed $1 / $2 pages")
+       .replace(/^着手\s*(\d+)%\s*・\s*完成\s*(\d+)%$/,"Started $1% · Completed $2%")
+       .replace(/^着手\s*(\d+)%$/,"Started $1%")
+       .replace(/^完成\s*(\d+)%$/,"Completed $1%")
+       .replace(/^全(\d+)工程$/,"$1 stages")
+       .replace(/^あと約(\d+)日$/,"About $1 days")
+       .replace(/^締切まで\s*あと(\d+)日$/,"$1 days until deadline")
+       .replace(/^締切を\s*(\d+)日超過$/,"$1 days past deadline")
+       .replace(/^完成予想は締切より\s*(\d+)日早いペース$/,"Forecast: $1 days before deadline")
+       .replace(/^完成予想は締切より\s*(\d+)日超過するペース$/,"Forecast: $1 days after deadline")
+       .replace(/^完成予想は締切予定日と同日$/,"Forecast matches the deadline")
+       .replace(/^必要ペース\s*1日([\d.]+)工程$/,"Required pace: $1 stages/day")
+       .replace(/^(\d+)作品$/,"$1 projects")
+       .replace(/^(\d+)P 付箋$/,"Page $1 note");
+   }
+   if(x!==s)el.textContent=raw.replace(s,x);
+ }
+ // title/placeholderなど
+ document.title="Manga Production Tracker";
+ document.querySelectorAll("[placeholder]").forEach(el=>{
+   const p=el.getAttribute("placeholder");
+   if(p==="作品名")el.setAttribute("placeholder","Project title");
+   if(p==="フォルダ名")el.setAttribute("placeholder","Folder name");
+   if(p==="修正点・忘れたくないことなど")el.setAttribute("placeholder","Corrections, reminders, etc.");
+ });
+}
+
+function refreshWholeLanguage(){
+ applyLanguage();
+ if(uiLang()==="en"){
+   translateExactText(document);
+   translateUiPatterns(document);
+ }
+}
+
+// 言語変更時、未カスタマイズのデフォルト工程は言語に合わせる。
+// ユーザーが変更した工程セットは勝手に翻訳しない。
+const settingsSaveBtn=document.getElementById("settingsSave");
+const previousSettingsSave=settingsSaveBtn.onclick;
+settingsSaveBtn.onclick=()=>{
+ const before=appSettings.language;
+ const selected=document.getElementById("appLanguage").value;
+ const jaDefault=defaultStageDraft.length===JA_STAGE_DEFAULTS.length&&defaultStageDraft.every((x,i)=>x===JA_STAGE_DEFAULTS[i]);
+ const enDefault=defaultStageDraft.length===EN_STAGE_DEFAULTS.length&&defaultStageDraft.every((x,i)=>x===EN_STAGE_DEFAULTS[i]);
+ if(selected==="en"&&jaDefault) defaultStageDraft=[...EN_STAGE_DEFAULTS];
+ if(selected==="ja"&&enDefault) defaultStageDraft=[...JA_STAGE_DEFAULTS];
+ previousSettingsSave();
+ setTimeout(refreshWholeLanguage,0);
+};
+
+// 動的再描画後の翻訳漏れも拾う
+const fullLanguageObserver=new MutationObserver(()=>{
+ if(uiLang()==="en"){
+   clearTimeout(window.__fullLangTimer);
+   window.__fullLangTimer=setTimeout(()=>translateUiPatterns(document),0);
+ }
+});
+fullLanguageObserver.observe(document.body,{childList:true,subtree:true,characterData:true});
+
+setTimeout(refreshWholeLanguage,0);
+</script>
+
+<script>
+/* ---- Runtime language-state fix + settings separation ---- */
+const STATIC_JA_SNAPSHOT=new Map();
+function captureJapaneseUi(){
+ document.querySelectorAll("body *").forEach(el=>{
+   if(el.children.length===0 && !el.matches("script,style,input,textarea,option")){
+     const s=el.textContent.trim();
+     if(s) STATIC_JA_SNAPSHOT.set(el,s);
+   }
+ });
+ document.querySelectorAll("input[placeholder],textarea[placeholder]").forEach(el=>{
+   el.dataset.jaPlaceholder=el.getAttribute("placeholder")||"";
+ });
+}
+function restoreJapaneseStaticUi(){
+ STATIC_JA_SNAPSHOT.forEach((txt,el)=>{
+   if(el?.isConnected && el.children.length===0) el.textContent=txt;
+ });
+ document.querySelectorAll("[data-ja-placeholder]").forEach(el=>el.setAttribute("placeholder",el.dataset.jaPlaceholder));
+ document.title="漫画制作進捗";
+ document.documentElement.lang="ja";
+}
+function rerenderCurrentViewForLanguage(){
+ // Re-render from data so dynamically generated text follows the current language state.
+ try{
+   if(currentProjectId && projectStore.projects[currentProjectId]){
+     render();
+   }else{
+     renderProjectList();
+     if(typeof renderFoldersAndFilter==="function")renderFoldersAndFilter();
+   }
+ }catch(e){}
+}
+function applyCurrentLanguageNow(){
+ syncSplitSettings();
+ if(languageSettings.language==="ja"){
+   restoreJapaneseStaticUi();
+   rerenderCurrentViewForLanguage();
+ }else{
+   // Start from the Japanese source UI before applying English.
+   restoreJapaneseStaticUi();
+   rerenderCurrentViewForLanguage();
+   applyLanguage();
+   translateExactText(document);
+   translateUiPatterns(document);
+ }
+}
+captureJapaneseUi();
+
+/* Replace the final settings save behavior with an immediate, reload-free switch. */
+const finalSettingsSave=document.getElementById("settingsSave");
+finalSettingsSave.onclick=()=>{
+ let a=Math.max(1,Math.min(999,Number(document.getElementById("defaultStartPage").value)||1));
+ let b=Math.max(a,Math.min(999,Number(document.getElementById("defaultEndPage").value)||a));
+ if(b-a+1>300){alert(uiLang()==="en"?"Up to 300 pages per project.":"1作品300ページまでです。");return}
+ let selected=document.getElementById("appLanguage").value==="en"?"en":"ja";
+ let ss=defaultStageDraft.map(x=>String(x||"").trim()).filter(Boolean);
+ if(!ss.length)return;
+
+ const jaDefault=ss.length===JA_STAGE_DEFAULTS.length&&ss.every((x,i)=>x===JA_STAGE_DEFAULTS[i]);
+ const enDefault=ss.length===EN_STAGE_DEFAULTS.length&&ss.every((x,i)=>x===EN_STAGE_DEFAULTS[i]);
+ if(selected==="en"&&jaDefault)ss=[...EN_STAGE_DEFAULTS];
+ if(selected==="ja"&&enDefault)ss=[...JA_STAGE_DEFAULTS];
+
+ appSettings=normalizeAppSettings({
+   language:selected,
+   defaultStartPage:a,
+   defaultEndPage:b,
+   defaultStages:ss
+ });
+ persistAppSettings();
+ document.getElementById("appSettingsModal").classList.remove("open");
+ applyCurrentLanguageNow();
+};
+
+/* Any project/folder navigation gets a fresh language pass. */
+document.addEventListener("click",()=>{
+ setTimeout(()=>{
+   if(languageSettings.language==="en"){
+     translateExactText(document);translateUiPatterns(document);
+   }else{
+     // Dynamic renderers use Japanese source strings; restore any old English static nodes.
+     restoreJapaneseStaticUi();
+   }
+ },0);
+},true);
+
+setTimeout(applyCurrentLanguageNow,0);
+</script>
+
+<script>
+/* ---- Separate Language UI and Project Defaults UI ---- */
+function updateLanguageButtons(){
+ document.querySelectorAll(".language-option").forEach(b=>b.classList.toggle("active",b.dataset.lang===languageSettings.language));
+ const cancel=document.getElementById("languageCancel");
+ if(cancel)cancel.textContent=languageSettings.language==="en"?"Close":"閉じる";
+}
+document.getElementById("languageButton").onclick=()=>{
+ updateLanguageButtons();
+ document.getElementById("languageModal").classList.add("open");
+};
+document.getElementById("languageCancel").onclick=()=>document.getElementById("languageModal").classList.remove("open");
+document.getElementById("languageModal").onclick=e=>{if(e.target.id==="languageModal")e.currentTarget.classList.remove("open")};
+
+document.querySelectorAll(".language-option").forEach(btn=>btn.onclick=()=>{
+ const selected=btn.dataset.lang;
+ const old=languageSettings.language;
+ if(selected===old)return;
+ let ss=[...projectDefaults.stages];
+ const jaDefault=ss.length===JA_STAGE_DEFAULTS.length&&ss.every((x,i)=>x===JA_STAGE_DEFAULTS[i]);
+ const enDefault=ss.length===EN_STAGE_DEFAULTS.length&&ss.every((x,i)=>x===EN_STAGE_DEFAULTS[i]);
+ if(selected==="en"&&jaDefault)ss=[...EN_STAGE_DEFAULTS];
+ if(selected==="ja"&&enDefault)ss=[...JA_STAGE_DEFAULTS];
+ appSettings=normalizeAppSettings({
+   language:selected,
+   defaultStartPage:projectDefaults.startPage,
+   defaultEndPage:projectDefaults.endPage,
+   defaultStages:ss
+ });
+ persistAppSettings();
+ document.getElementById("appLanguage").value=selected;
+ updateLanguageButtons();
+ applyCurrentLanguageNow();
+ setTimeout(()=>document.getElementById("languageModal").classList.remove("open"),120);
+});
+
+/* Settings gear now saves ONLY new-project defaults. Language is untouched. */
+document.getElementById("appSettingsButton").onclick=()=>{
+ document.getElementById("defaultStartPage").value=projectDefaults.startPage;
+ document.getElementById("defaultEndPage").value=projectDefaults.endPage;
+ defaultStageDraft=[...projectDefaults.stages];
+ renderDefaultStageEditor();
+ document.getElementById("appSettingsModal").classList.add("open");
+};
+document.getElementById("settingsSave").onclick=()=>{
+ let a=Math.max(1,Math.min(999,Number(document.getElementById("defaultStartPage").value)||1));
+ let b=Math.max(a,Math.min(999,Number(document.getElementById("defaultEndPage").value)||a));
+ if(b-a+1>300){alert(uiLang()==="en"?"Up to 300 pages per project.":"1作品300ページまでです。");return}
+ const ss=defaultStageDraft.map(x=>String(x||"").trim()).filter(Boolean);
+ if(!ss.length)return;
+ appSettings=normalizeAppSettings({
+   language:languageSettings.language,
+   defaultStartPage:a,
+   defaultEndPage:b,
+   defaultStages:ss
+ });
+ persistAppSettings();
+ document.getElementById("appSettingsModal").classList.remove("open");
+ applyCurrentLanguageNow();
+};
+document.getElementById("appLanguage").value=languageSettings.language;
+updateLanguageButtons();
+</script>
+
+<script>
+/* ---- Persistence + default-settings language patch ---- */
+function localizeDefaultsSettingsUi(){
+ const en=languageSettings.language==="en";
+ const set=(id,ja,enText)=>{const el=document.getElementById(id);if(el)el.textContent=en?enText:ja};
+ set("settingsTitle","アプリ設定","Default Settings");
+ set("settingsDefaultsTitle","新規作品のデフォルト","New Project Defaults");
+ set("settingsPagesLabel","制作ページ","Pages");
+ set("settingsStagesLabel","工程","Stages");
+ set("defaultStageAdd","＋ 工程を追加","+ Add Stage");
+ set("settingsNote","新しい作品を作るときの初期値です。作品ごとに変更できます。","These initial values are used when creating a new project. You can change them per project.");
+ set("settingsCancel","キャンセル","Cancel");
+ set("settingsSave","保存","Save");
+}
+function stockStageSet(arr,set){return arr.length===set.length&&arr.every((x,i)=>x===set[i])}
+function syncStockDefaultsToLanguage(){
+ let ss=[...projectDefaults.stages];
+ if(languageSettings.language==="en"&&stockStageSet(ss,JA_STAGE_DEFAULTS))ss=[...EN_STAGE_DEFAULTS];
+ if(languageSettings.language==="ja"&&stockStageSet(ss,EN_STAGE_DEFAULTS))ss=[...JA_STAGE_DEFAULTS];
+ if(!stockStageSet(ss,projectDefaults.stages)){
+   appSettings=normalizeAppSettings({
+     language:languageSettings.language,
+     defaultStartPage:projectDefaults.startPage,
+     defaultEndPage:projectDefaults.endPage,
+     defaultStages:ss
+   });
+   persistAppSettings();
+ }
+}
+function refreshSettingsLanguage(){
+ syncStockDefaultsToLanguage();
+ localizeDefaultsSettingsUi();
+ if(document.getElementById("appSettingsModal").classList.contains("open")){
+   defaultStageDraft=[...projectDefaults.stages];
+   renderDefaultStageEditor();
+ }
+}
+document.querySelectorAll(".language-option").forEach(btn=>{
+ const old=btn.onclick;
+ btn.onclick=(e)=>{
+   old.call(btn,e);
+   setTimeout(refreshSettingsLanguage,0);
+ };
+});
+const oldSettingsOpen=document.getElementById("appSettingsButton").onclick;
+document.getElementById("appSettingsButton").onclick=(e)=>{
+ refreshSettingsLanguage();
+ oldSettingsOpen.call(document.getElementById("appSettingsButton"),e);
+ localizeDefaultsSettingsUi();
+};
+setTimeout(()=>{syncStockDefaultsToLanguage();localizeDefaultsSettingsUi()},0);
+</script>
+
+<script>
+/* ---- reload folder render race fix + localized default stage names ---- */
+const DEFAULT_STAGE_NAME_MAP={
+ jaToEn:{
+   "ネーム":"Storyboard",
+   "下書き":"Sketch",
+   "ペン":"Line Art",
+   "線画":"Line Art",
+   "背景":"Background",
+   "トーン":"Tone",
+   "写植":"Lettering",
+   "仕上げ":"Finishing",
+   "カラー":"Color"
+ },
+ enToJa:{
+   "Storyboard":"ネーム",
+   "Sketch":"下書き",
+   "Line Art":"ペン",
+   "Background":"背景",
+   "Tone":"トーン",
+   "Lettering":"写植",
+   "Finishing":"仕上げ",
+   "Color":"カラー"
+ }
+};
+function translateDefaultStageNames(targetLang){
+ const map=targetLang==="en"?DEFAULT_STAGE_NAME_MAP.jaToEn:DEFAULT_STAGE_NAME_MAP.enToJa;
+ const translated=projectDefaults.stages.map(name=>map[name]||name);
+ if(translated.some((x,i)=>x!==projectDefaults.stages[i])){
+   appSettings=normalizeAppSettings({
+     language:targetLang,
+     defaultStartPage:projectDefaults.startPage,
+     defaultEndPage:projectDefaults.endPage,
+     defaultStages:translated
+   });
+   persistAppSettings();
+ }
+}
+document.querySelectorAll(".language-option").forEach(btn=>{
+ const previous=btn.onclick;
+ btn.onclick=(e)=>{
+   previous.call(btn,e);
+   // previous handler persists the selected language first
+   setTimeout(()=>{
+     translateDefaultStageNames(languageSettings.language);
+     localizeDefaultsSettingsUi();
+     if(document.getElementById("appSettingsModal").classList.contains("open")){
+       defaultStageDraft=[...projectDefaults.stages];
+       renderDefaultStageEditor();
+     }
+     // Always perform a complete folder render after language changes.
+     folderRendering=false;
+     if(!currentProjectId){
+       renderProjectList();
+       renderFoldersAndFilter();
+     }
+   },0);
+ };
+});
+
+/* After startup/reload, force one final folder-aware render after all language
+   initialization has finished. This does not change folderId data. */
+setTimeout(()=>{
+ folderRendering=false;
+ if(!currentProjectId){
+   renderProjectList();
+   renderFoldersAndFilter();
+ }
+},40);
+</script>
+
+<script>
+/* Visible project title */
+function refreshCurrentProjectTitle(){
+ if(!currentProjectId)return;
+ const p=projectStore.projects[currentProjectId];
+ const el=document.getElementById("currentProjectTitle");
+ if(el&&p)el.textContent=p.title||"";
+ const lab=document.getElementById("currentProjectTitleLabel");
+ if(lab)lab.textContent=languageSettings.language==="en"?"Project":"作品";
+}
+document.addEventListener("click",()=>setTimeout(refreshCurrentProjectTitle,0),true);
+setTimeout(refreshCurrentProjectTitle,0);
+</script>
+
+<script>
+(function(){
+ const list=document.getElementById("projectList");if(!list)return;
+ list.addEventListener("contextmenu",e=>{
+   if(e.target.closest(".folder-item,.project-item"))e.preventDefault();
+ });
+ list.addEventListener("selectstart",e=>{
+   if(e.target.closest(".folder-item,.project-item"))e.preventDefault();
+ });
+})();
 </script>
 </body>
 </html>

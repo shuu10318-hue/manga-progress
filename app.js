@@ -256,11 +256,10 @@ function renderProjectBreadcrumb(){
   const fid=projectParentFolderId(currentProjectId);
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const projectName=esc(p?.title||"プロジェクト");
-  const rootLabel=languageSettings?.language==="en"?"Projects":"作品一覧";
   if(fid){
-    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
   }else{
-    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
   }
 }
 function showFolderView(folderId){
@@ -467,7 +466,8 @@ function updateSummary(){
   if(overallRing){
     overallRing.style.background=`conic-gradient(var(--done) 0 ${dp}%,var(--started) ${dp}% ${sp}%,#eceef1 ${sp}% 100%)`;
   }
-  completePages.textContent=`完成 ${progress.filter(r=>r.every(v=>v===2)).length} / ${totalPages}P`;
+  const completedPageCount=progress.filter(r=>r.every(v=>v===2)).length;
+  completePages.textContent=languageSettings?.language==="en" ? `Completed ${completedPageCount} / ${totalPages} pages` : `完成 ${completedPageCount} / ${totalPages}P`;
   renderStages();renderHistory();
 }
 function renderStages(){
@@ -476,7 +476,8 @@ function renderStages(){
     const st=progress.filter(r=>r[s]>0).length,dn=progress.filter(r=>r[s]===2).length;
     const sp=Math.round(st/totalPages*100),dp=Math.round(dn/totalPages*100);
     const d=document.createElement("div");d.className="stage";
-    d.innerHTML=`<div class="stage-info"><span>${name}</span><span>着手 ${sp}% ・ 完成 ${dp}%</span></div><div class="dual-bar"><div class="started-bar" style="width:${sp}%"></div><div class="done-bar" style="width:${dp}%"></div></div>`;
+    const stageStats=languageSettings?.language==="en" ? `Started ${sp}% · Completed ${dp}%` : `着手 ${sp}% ・ 完成 ${dp}%`;
+    d.innerHTML=`<div class="stage-info"><span>${name}</span><span>${stageStats}</span></div><div class="dual-bar"><div class="started-bar" style="width:${sp}%"></div><div class="done-bar" style="width:${dp}%"></div></div>`;
     stageProgress.appendChild(d);
   });
 }
@@ -626,7 +627,7 @@ function renderPages(){
   }
   pages.classList.toggle("short-project",totalPages<=12);
   const views=Math.ceil(totalPages/12);
-  range.textContent=`${startPage+start}–${startPage+end-1} / 全${totalPages}P`;navPage.textContent=`${currentView+1} / ${views}`;
+  range.textContent=languageSettings?.language==="en" ? `${startPage+start}–${startPage+end-1} / ${totalPages} pages` : `${startPage+start}–${startPage+end-1} / 全${totalPages}P`;navPage.textContent=`${currentView+1} / ${views}`;
   prev.disabled=currentView===0;next.disabled=currentView>=views-1;
 }
 
@@ -1259,7 +1260,7 @@ function renderFoldersAndFilter(){
  const head=document.getElementById("folderHead"),toolbar=document.getElementById("folderToolbar");
  if(currentFolderId&&projectStore.folders[currentFolderId]){
    head.classList.add("show");toolbar.style.display="none";
-   document.getElementById("folderHeadTitle").innerHTML=`<button type="button" class="crumb-link" data-nav="root">${languageSettings?.language==="en"?"Projects":"作品一覧"}</button><span class="crumb-sep">›</span><span class="crumb-current">${String(projectStore.folders[currentFolderId].name).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</span>`;
+   document.getElementById("folderHeadTitle").innerHTML=`<button type="button" class="crumb-link" data-nav="root">作品一覧</button><span class="crumb-sep">›</span><span class="crumb-current">${String(projectStore.folders[currentFolderId].name).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</span>`;
  const renameBtn=document.getElementById("folderRename");
  const deleteBtn=document.getElementById("folderDelete");
  if(renameBtn)renameBtn.style.display="";
@@ -2108,6 +2109,7 @@ try{ languageObserver.disconnect(); }catch(e){}
 try{ fullLanguageObserver.disconnect(); }catch(e){}
 
 const CLEAN_EN_EXACT = {
+ "全体":"OVERALL",
  "作品一覧":"Projects","メモ一覧":"Notes","総合進捗":"Overall Progress","制作進捗":"Overall Progress",
  "制作中":"In progress","完成率":"Completion","工程別進捗":"Progress by Stage","工程表":"Production Table",
  "作業履歴":"Work History","今日":"Today","直近7日":"Last 7 days","直近7日間":"Last 7 days",

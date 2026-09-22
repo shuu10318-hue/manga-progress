@@ -526,10 +526,13 @@ function renderHistory(){
   if(deadlineEl){
     const active=projectStore?.projects?.[projectStore.activeProjectId];
     const deadline=active?.deadline||document.getElementById("deadlineInput")?.value||"";
+    const isEnglish=languageSettings?.language==="en";
     if(!deadline){
       deadlineEl.textContent="";
     }else if(doneCount()===totalPages*stages.length){
-      deadlineEl.textContent="締切 "+deadline.replaceAll("-","/")+" ・ 完成済み";
+      deadlineEl.textContent=isEnglish
+        ? `Deadline ${deadline.replaceAll("-","/")} · Completed`
+        : "締切 "+deadline.replaceAll("-","/")+" ・ 完成済み";
     }else{
       const dl=new Date(deadline+"T00:00:00");
       const todayDate=new Date(localDate()+"T00:00:00");
@@ -559,7 +562,27 @@ function renderHistory(){
         ? ""
         : ` ・ 必要ペース 1日${needPerDay.toFixed(1)}工程`;
 
-      deadlineEl.textContent=`${deadlineLabel} ・ ${forecastDiff}${paceLabel}`;
+      if(isEnglish){
+        const deadlineLabelEn=daysToDeadline>=0
+          ? `${daysToDeadline} days until deadline`
+          : `${Math.abs(daysToDeadline)} days past deadline`;
+        let forecastDiffEn="";
+        if(weightedAvg>0){
+          const forecastDays=Math.ceil(remWeighted/weightedAvg);
+          const forecastDateEn=new Date(todayDate);
+          forecastDateEn.setDate(forecastDateEn.getDate()+forecastDays);
+          const diffEn=Math.round((dl-forecastDateEn)/msDay);
+          if(diffEn>0) forecastDiffEn=`Forecast is ${diffEn} days before deadline`;
+          else if(diffEn<0) forecastDiffEn=`Forecast is ${Math.abs(diffEn)} days after deadline`;
+          else forecastDiffEn="Forecast matches the deadline";
+        }else{
+          forecastDiffEn="The forecast comparison appears after enough work history is collected.";
+        }
+        const paceLabelEn=needPerDay===null ? "" : ` · Required pace: ${needPerDay.toFixed(1)} stages/day`;
+        deadlineEl.textContent=`${deadlineLabelEn} · ${forecastDiffEn}${paceLabelEn}`;
+      }else{
+        deadlineEl.textContent=`${deadlineLabel} ・ ${forecastDiff}${paceLabel}`;
+      }
     }
   }
 

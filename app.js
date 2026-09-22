@@ -212,7 +212,7 @@ function applyProjectData(s){
   pageNotes=p.pageNotes;
   document.getElementById("title").value=p.title;
   const currentTitleEl=document.getElementById("currentProjectTitle");
-  if(currentTitleEl)currentTitleEl.textContent=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
+  if(currentTitleEl)currentTitleEl.textContent=p.title;
   document.getElementById("creationStartDateInput").value=p.creationStartDate||"";
   document.getElementById("deadlineInput").value=p.deadline||"";
   history=p.history?normalizeHistory(p.history):{day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
@@ -259,9 +259,9 @@ function renderProjectBreadcrumb(){
   const projectName=esc(rawProjectName||(languageSettings?.language==="en"?"Untitled":"無題"));
   const rootLabel=languageSettings?.language==="en"?"Projects":"作品一覧";
   if(fid){
-    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current" data-user-text="1">${projectName}</span>`;
   }else{
-    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;
+    el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><span class="crumb-current" data-user-text="1">${projectName}</span>`;
   }
 }
 function showFolderView(folderId){
@@ -352,7 +352,7 @@ function renderProjectList(){
     const donePages=(p.progress||[]).filter(r=>Array.isArray(r)&&r.every(v=>v===2)).length;
     item.innerHTML=`<div class="project-item-main">
       <div style="min-width:0">
-        <div class="project-item-title"></div>
+        <div class="project-item-title" data-user-text="1"></div>
         <div class="project-item-meta">
 <div class="project-meta-row"><span>ページ</span><b>全${p.totalPages}P</b></div>
 <div class="project-meta-row"><span>完成</span><b>${donePages}P / ${p.totalPages}P</b></div>
@@ -2089,7 +2089,7 @@ function refreshCurrentProjectTitle(){
  if(!currentProjectId)return;
  const p=projectStore.projects[currentProjectId];
  const el=document.getElementById("currentProjectTitle");
- if(el&&p)el.textContent=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
+ if(el&&p)el.textContent=p.title||"";
  const lab=document.getElementById("currentProjectTitleLabel");
  if(lab)lab.textContent=languageSettings.language==="en"?"Project":"作品";
 }
@@ -2148,7 +2148,7 @@ const CLEAN_EN_EXACT = {
 const CLEAN_USER_TEXT_SELECTOR = [
  ".project-title",".project-name",".folder-name",
  "#stageProgress .stage-name","#pages .stage-name",".memo-text",".memo-list",
- "input[type=text]","textarea"
+ "input[type=text]","textarea","[data-user-text]"
 ].join(",");
 
 function cleanEnglishPass(root=document){

@@ -255,7 +255,8 @@ function renderProjectBreadcrumb(){
   const p=projectStore.projects[currentProjectId];
   const fid=projectParentFolderId(currentProjectId);
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-  const projectName=esc(p?.title||(languageSettings?.language==="en"?"Project":"プロジェクト"));
+  const rawProjectName=p?.title||"";
+  const projectName=esc(rawProjectName||(languageSettings?.language==="en"?"Untitled":"無題"));
   const rootLabel=languageSettings?.language==="en"?"Projects":"作品一覧";
   if(fid){
     el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current">${projectName}</span>`;

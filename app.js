@@ -156,7 +156,7 @@ const projectStages=Array.isArray(s?.stages)&&s.stages.length
     : [...DEFAULT_STAGES];
   let pg=Array.from({length:n},(_,p)=>Array.from({length:projectStages.length},(_,i)=>[0,1,2].includes(s?.progress?.[p]?.[i])?s.progress[p][i]:0));
   return {
-    title:typeof s?.title==="string"&&s.title?s.title:"無題",
+    title:typeof s?.title==="string"?s.title:"",
     stages:projectStages,
     creationStartDate:typeof s?.creationStartDate==="string"?s.creationStartDate:"",
     deadline:typeof s?.deadline==="string"?s.deadline:"",
@@ -212,7 +212,7 @@ function applyProjectData(s){
   pageNotes=p.pageNotes;
   document.getElementById("title").value=p.title;
   const currentTitleEl=document.getElementById("currentProjectTitle");
-  if(currentTitleEl)currentTitleEl.textContent=p.title;
+  if(currentTitleEl)currentTitleEl.textContent=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
   document.getElementById("creationStartDateInput").value=p.creationStartDate||"";
   document.getElementById("deadlineInput").value=p.deadline||"";
   history=p.history?normalizeHistory(p.history):{day:localDate(),baselineDone:doneCount(),baselineWeighted:weightedCount(),weightedDays:{},days:{}};
@@ -365,7 +365,7 @@ function renderProjectList(){
       </div>
     </div>
     <div class="project-actions"><button class="project-delete-button">この作品を削除</button></div>`;
-    item.querySelector(".project-item-title").textContent=p.title||"無題";
+    item.querySelector(".project-item-title").textContent=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
     item.addEventListener("click",e=>{
       if(Date.now()<(window.__suppressMixedClickUntil||0))return;
       if(e.target.closest("button,a,input,textarea,select,label"))return;
@@ -373,7 +373,7 @@ function renderProjectList(){
     });
     item.querySelector(".project-edit-button").onclick=e=>{e.stopPropagation();openProjectEdit(id)};
     item.querySelector(".project-delete-button").onclick=()=>{
-      const name=p.title||"無題";
+      const name=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
       if(!confirm(`「${name}」を削除しますか？\nこの操作は元に戻せません。`))return;
       delete projectStore.projects[id];
       if(projectStore.activeProjectId===id)projectStore.activeProjectId=null;
@@ -946,7 +946,7 @@ function updateNewProjectTotal(){
 document.getElementById("newProjectStart").addEventListener("input",updateNewProjectTotal);
 document.getElementById("newProjectEnd").addEventListener("input",updateNewProjectTotal);
 document.getElementById("createNewProject").onclick=()=>{
-  const title=document.getElementById("newProjectTitle").value.trim()||"無題";
+  const title=document.getElementById("newProjectTitle").value.trim();
   let a=Math.max(1,Math.min(999,Number(document.getElementById("newProjectStart").value)||1));
   let b=Math.max(a,Math.min(999,Number(document.getElementById("newProjectEnd").value)||a));
   if(b-a+1>300){alert("1作品300ページまでです。");return;}
@@ -1133,7 +1133,7 @@ document.getElementById("saveEditProject").addEventListener("click",()=>{
     const oldRow=oldProgress[oldIndex]||[];
     return mapping.map(oi=>oi===null?0:(oldRow[oi]??0));
   });
-  p.title=document.getElementById("editProjectTitle").value.trim()||"無題";
+  p.title=document.getElementById("editProjectTitle").value.trim();
   p.startPage=newStart; p.totalPages=newTotal;
   p.creationStartDate=document.getElementById("editProjectCreationStartDate").value||"";
   p.deadline=document.getElementById("editProjectDeadline").value||"";
@@ -2089,7 +2089,7 @@ function refreshCurrentProjectTitle(){
  if(!currentProjectId)return;
  const p=projectStore.projects[currentProjectId];
  const el=document.getElementById("currentProjectTitle");
- if(el&&p)el.textContent=p.title||"";
+ if(el&&p)el.textContent=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
  const lab=document.getElementById("currentProjectTitleLabel");
  if(lab)lab.textContent=languageSettings.language==="en"?"Project":"作品";
 }

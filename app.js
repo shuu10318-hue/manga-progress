@@ -8,19 +8,25 @@ let projectDefaults={startPage:1,endPage:48,stages:[]};
 let projectStore={version:2,activeProjectId:null,projects:{}};
 let currentProjectId=null;
 const DEFAULT_STAGES=["ネーム","ペン","背景","トーン","写植"];
+const MAX_STAGES=100;
 
 const UI_TEXT={
- ja:{home:"作品一覧",newProject:"＋ 新しい作品",settings:"アプリ設定",language:"言語",defaults:"新規作品のデフォルト",pages:"制作ページ",stages:"工程",addStage:"＋ 工程を追加",cancel:"キャンセル",save:"保存",note:"新しい作品を作るときの初期値です。作品ごとに変更できます。",folderAdd:"＋ フォルダ",memo:"メモ一覧",backProjects:"作品一覧"},
- en:{home:"Projects",newProject:"+ New Project",settings:"App Settings",language:"Language",defaults:"New Project Defaults",pages:"Pages",stages:"Stages",addStage:"+ Add Stage",cancel:"Cancel",save:"Save",note:"These are the initial values for new projects. Each project can be changed separately.",folderAdd:"+ Folder",memo:"Notes",backProjects:"Projects"}
+ ja:{home:"Library",newProject:"＋ 新しい作品",settings:"アプリ設定",language:"言語",defaults:"新規作品のデフォルト",pages:"制作ページ",stages:"工程",addStage:"＋ 工程を追加",cancel:"キャンセル",save:"保存",note:"新しい作品を作るときの初期値です。作品ごとに変更できます。",folderAdd:"＋ フォルダ",memo:"メモ一覧",backProjects:"作品一覧"},
+ en:{home:"Library",newProject:"+ New Project",settings:"App Settings",language:"Language",defaults:"New Project Defaults",pages:"Pages",stages:"Stages",addStage:"+ Add Stage",cancel:"Cancel",save:"Save",note:"These are the initial values for new projects. Each project can be changed separately.",folderAdd:"+ Folder",memo:"Notes",backProjects:"Projects"}
 };
 function normalizeAppSettings(raw){
  const lang=raw?.language==="en"?"en":"ja";
- let a=Math.max(1,Math.min(999,Number(raw?.defaultStartPage)||1));
- let b=Math.max(a,Math.min(999,Number(raw?.defaultEndPage)||48));
- if(b-a+1>300)b=a+299;
- let ss=Array.isArray(raw?.defaultStages)?raw.defaultStages.map(x=>String(x||"").trim()).filter(Boolean).slice(0,8):[];
+ let a=Math.max(1,Math.min(500,Number(raw?.defaultStartPage)||1));
+ let b=Math.max(a,Math.min(500,Number(raw?.defaultEndPage)||48));
+ if(b-a+1>500)b=a+499;
+ let ss=Array.isArray(raw?.defaultStages)?raw.defaultStages.map(x=>String(x||"").trim()).filter(Boolean).slice(0,MAX_STAGES):[];
  if(!ss.length)ss=[...DEFAULT_STAGES];
- return {language:lang,defaultStartPage:a,defaultEndPage:b,defaultStages:ss};
+ const allowedColors=["#222222","#d9788d","#6e9fd0","#70ad98","#9a83c6","#dc9878"];
+ const legacyThemeMap={"#4f6bed":"#6e9fd0","#3f8f6b":"#70ad98","#7a5cc7":"#9a83c6","#c7663d":"#dc9878"};
+ const rawTheme=raw?.themeColor ?? appSettings?.themeColor;
+ const requested=legacyThemeMap[rawTheme]||rawTheme;
+ const themeColor=allowedColors.includes(requested)?requested:"#222222";
+ return {language:lang,defaultStartPage:a,defaultEndPage:b,defaultStages:ss,themeColor};
 }
 function syncSplitSettings(){
  languageSettings={language:appSettings?.language==="en"?"en":"ja"};
@@ -38,6 +44,15 @@ function loadAppSettings(){
 function persistAppSettings(){
  syncSplitSettings();
  localStorage.setItem(APP_SETTINGS_KEY,JSON.stringify(appSettings));
+}
+function applyThemeColor(color=appSettings?.themeColor||"#222222"){
+ document.documentElement.style.setProperty("--accent",color);
+ document.documentElement.dataset.theme=color==="#222222"?"mono":"color";
+ const meta=document.querySelector('meta[name="theme-color"]');
+ if(meta) meta.content=color==="#222222"?"#f6f6f6":`color-mix(in srgb, ${color} 8%, #f8f8f8)`;
+ document.querySelectorAll(".theme-color-option").forEach(b=>{
+   const on=b.dataset.themeColor===color;b.classList.toggle("selected",on);b.setAttribute("aria-checked",on?"true":"false");
+ });
 }
 function applyLanguage(){
  const t=UI_TEXT[languageSettings.language]||UI_TEXT.ja;
@@ -60,10 +75,11 @@ function renderDefaultStageEditor(){
    row.querySelector('[data-act="del"]').onclick=()=>{if(defaultStageDraft.length<=1)return;defaultStageDraft.splice(i,1);renderDefaultStageEditor()};
    box.appendChild(row);
  });
- document.getElementById("defaultStageAdd").disabled=defaultStageDraft.length>=8;
+ document.getElementById("defaultStageAdd").disabled=false;
 }
 
 loadAppSettings();
+applyThemeColor();
 let stages=[...DEFAULT_STAGES];
 let totalPages=48,startPage=1,currentView=0,progress=createProgress(48);
 let history={day:"",baselineDone:0,days:{}};
@@ -121,7 +137,7 @@ function makeProjectData(){
   };
 }
 function freshProjectData(title="新しい作品",sp=1,ep=1){
-  const n=Math.max(1,Math.min(300,ep-sp+1));
+  const n=Math.max(1,Math.min(500,ep-sp+1));
   const p=createProgress(n);
   return {
     title,creationStartDate:"",deadline:"",totalPages:n,startPage:sp,progress:p,stages:[...DEFAULT_STAGES],folderId:null,
@@ -140,19 +156,20 @@ function save(){
   const oldProject=projectStore.projects[currentProjectId]||{};
   const nextProject=makeProjectData();
   nextProject.folderId=oldProject.folderId||null;
+  if(oldProject.trashedAt)nextProject.trashedAt=oldProject.trashedAt;
   projectStore.projects[currentProjectId]=nextProject;
   projectStore.activeProjectId=currentProjectId;
   persistProjectStore();
   const m=document.getElementById("saveMessage");
-  m.textContent="保存しました ✓";
+  m.textContent=languageSettings?.language==="en"?"Saved ✓":"保存しました ✓";
   clearTimeout(save.timer);
-  save.timer=setTimeout(()=>m.textContent="変更は自動保存されます",1200);
+  save.timer=setTimeout(()=>m.textContent=languageSettings?.language==="en"?"Changes are saved automatically":"変更は自動保存されます",1200);
 }
 function normalizeProjectData(s){
-  let n=Number.isInteger(s?.totalPages)&&s.totalPages>0?Math.min(300,s.totalPages):48;
+  let n=Number.isInteger(s?.totalPages)&&s.totalPages>0?Math.min(500,s.totalPages):48;
   let sp=Number.isInteger(s?.startPage)&&s.startPage>0?s.startPage:1;
 const projectStages=Array.isArray(s?.stages)&&s.stages.length
-    ? s.stages.map(x=>String(x||"工程").trim()||"工程").slice(0,8)
+    ? s.stages.map(x=>String(x??"").trim()).slice(0,MAX_STAGES)
     : [...DEFAULT_STAGES];
   let pg=Array.from({length:n},(_,p)=>Array.from({length:projectStages.length},(_,i)=>[0,1,2].includes(s?.progress?.[p]?.[i])?s.progress[p][i]:0));
   return {
@@ -162,6 +179,7 @@ const projectStages=Array.isArray(s?.stages)&&s.stages.length
     deadline:typeof s?.deadline==="string"?s.deadline:"",
     totalPages:n,startPage:sp,progress:pg,
     folderId:typeof s?.folderId==="string"&&s.folderId?s.folderId:null,
+    trashedAt:Number.isFinite(Number(s?.trashedAt))&&Number(s.trashedAt)>0?Number(s.trashedAt):null,
     history:s?.history&&typeof s.history==="object"?s.history:null,
     pageNotes:s?.pageNotes&&typeof s.pageNotes==="object"?s.pageNotes:{}
   };
@@ -237,7 +255,7 @@ function renderRootBreadcrumb(){
   const title=document.getElementById("folderHeadTitle");
   if(!head||!title||currentFolderId)return;
   head.style.display="";
-  title.innerHTML=`<span class="crumb-current">${languageSettings?.language==="en"?"Projects":"作品一覧"}</span>`;
+  title.innerHTML=`<span class="crumb-current">${"Library"}</span>`;
   const rename=document.getElementById("folderRename");
   const del=document.getElementById("folderDelete");
   if(rename)rename.style.display="none";
@@ -257,7 +275,7 @@ function renderProjectBreadcrumb(){
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const rawProjectName=p?.title||"";
   const projectName=esc(rawProjectName||(languageSettings?.language==="en"?"Untitled":"無題"));
-  const rootLabel=languageSettings?.language==="en"?"Projects":"作品一覧";
+  const rootLabel="Library";
   if(fid){
     el.innerHTML=`<button type="button" class="crumb-link" data-nav="root">${rootLabel}</button><span class="crumb-sep">›</span><button type="button" class="crumb-link" data-nav="folder" data-folder-id="${esc(fid)}">${esc(projectStore.folders[fid].name)}</button><span class="crumb-sep">›</span><span class="crumb-current" data-user-text="1">${projectName}</span>`;
   }else{
@@ -310,9 +328,17 @@ function showProjectHome(){
   currentFolderId=null;
   renderFoldersAndFilter();
   renderRootBreadcrumb();
+  const rootHead=document.getElementById("folderHead");
+  rootHead?.classList.remove("show");
   saveViewState("root");
 }
 document.addEventListener("click",e=>{
+  const homeLogo=e.target.closest?.(".fillio-home-link");
+  if(homeLogo){
+    e.preventDefault();
+    showProjectHome();
+    return;
+  }
   const crumb=e.target.closest?.(".crumb-link");
   if(!crumb)return;
   e.preventDefault();
@@ -332,10 +358,56 @@ function projectPercent(p){
   if(!vals.length)return 0;
   return Math.round(vals.filter(v=>v===2).length/vals.length*100);
 }
+
+function projectDashboardStats(p){
+  const rows=Array.isArray(p?.progress)?p.progress:[];
+  const vals=rows.flat();
+  const total=Math.max(1,vals.length);
+  const started=vals.filter(v=>v>0).length;
+  const done=vals.filter(v=>v===2).length;
+  const weighted=vals.reduce((sum,v)=>sum+(v===2?1:v===1?0.5:0),0);
+  const today=localDate();
+  const h=p?.history&&typeof p.history==="object"?p.history:{};
+  const todayDone=h.day===today ? done-Number(h.baselineDone||0) : Number(h.days?.[today]||0);
+  let weekDone=0,weekWeighted=0;
+  for(let i=-6;i<=0;i++){
+    const d=addDays(today,i);
+    if(d===today&&h.day===today){
+      weekDone+=todayDone;
+      weekWeighted+=weighted-Number(h.baselineWeighted||0);
+    }else{
+      weekDone+=Number(h.days?.[d]||0);
+      weekWeighted+=Number(h.weightedDays?.[d]||0);
+    }
+  }
+  const avgWeighted=weekWeighted/7;
+  const remaining=Math.max(0,total-weighted);
+  let forecast="—";
+  if(remaining<=0) forecast=languageSettings?.language==="en"?"Completed":"完成";
+  else if(avgWeighted>0){
+    const days=Math.ceil(remaining/avgWeighted),d=new Date(); d.setDate(d.getDate()+days);
+    forecast=`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+  }
+  return {startedPct:Math.round(started/total*100),donePct:Math.round(done/total*100),todayDone,weekDone,forecast};
+}
+
+const expandedStageDetails=new Set();
+function projectStageStats(p){
+  const rows=Array.isArray(p?.progress)?p.progress:[];
+  const names=Array.isArray(p?.stages)&&p.stages.length?p.stages:DEFAULT_STAGES;
+  return names.map((name,stageIndex)=>{
+    const vals=rows.map(row=>Array.isArray(row)?Number(row[stageIndex]||0):0);
+    const total=Math.max(1,vals.length);
+    const started=vals.filter(v=>v>0).length;
+    const done=vals.filter(v=>v===2).length;
+    return {name:String(name||""),startedPct:Math.round(started/total*100),pct:Math.round(done/total*100)};
+  });
+}
+
 function renderProjectList(){
   const list=document.getElementById("projectList");
   list.innerHTML="";
-  const ids=Object.keys(projectStore.projects);
+  const ids=Object.keys(projectStore.projects).filter(id=>!projectStore.projects[id]?.trashedAt);
   const savedOrder=Array.isArray(projectStore.projectOrder)?projectStore.projectOrder:[];
   const orderedIds=savedOrder.filter(id=>ids.includes(id));
   ids.forEach(id=>{if(!orderedIds.includes(id))orderedIds.push(id)});
@@ -350,39 +422,58 @@ function renderProjectList(){
     item.className="project-item";
     item.dataset.projectId=id; item.dataset.orderKey="p:"+id;
     const donePages=(p.progress||[]).filter(r=>Array.isArray(r)&&r.every(v=>v===2)).length;
+    const dash=projectDashboardStats(p);
+    const isEn=languageSettings?.language==="en";
+    const donePct=projectPercent(p);
+    const stageStats=projectStageStats(p);
+    const expanded=expandedStageDetails.has(id);
+    const title=p.title||(isEn?"Untitled":"無題");
+    const detailRows=stageStats.map(st=>`<div class="project-stage-row"><span class="project-stage-name"></span><div class="project-stage-track dual"><i class="started" style="width:${st.startedPct}%"></i><i class="done" style="width:${st.pct}%"></i></div><b>${st.pct}%</b></div>`).join("");
     item.innerHTML=`<div class="project-item-main">
       <div style="min-width:0">
-        <div class="project-item-title" data-user-text="1"></div>
-        <div class="project-item-meta">
-<div class="project-meta-row"><span>ページ</span><b>全${p.totalPages}P</b></div>
-<div class="project-meta-row"><span>完成</span><b>${donePages}P / ${p.totalPages}P</b></div>
-<div class="project-meta-row"><span>全工程</span><b>${projectPercent(p)}%</b></div>
-<div class="project-meta-row"><span>締切</span><b>${p.deadline?p.deadline.replaceAll("-","/"):"未設定"}</b></div>
-</div>
+        <button class="project-open-title" type="button" aria-label="${isEn?"Open input page":"入力ページを開く"}" title="${isEn?"Open input page":"入力ページを開く"}"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span class="project-item-title" data-user-text="1"></span></button>
+        ${donePages>=p.totalPages ? `
+<div class="project-summary project-summary-complete">
+  <div class="project-summary-main"><b>${donePages} / ${p.totalPages}P</b><strong>✓ ${isEn?"Completed":"完成"}</strong></div>
+  <div class="project-progress-track dual"><i class="started" style="width:100%"></i><i class="done" style="width:100%"></i></div>
+  <div class="project-complete-meta"><span>${isEn?"Progress":"全工程"}</span><b>100%</b></div>
+</div>` : `
+<div class="project-summary">
+  <div class="project-summary-main"><b>${donePages} / ${p.totalPages}P</b><strong>${donePct}%</strong></div>
+  <div class="project-progress-track dual"><i class="started" style="width:${dash.startedPct}%"></i><i class="done" style="width:${donePct}%"></i></div>
+  <div class="project-plan-row">
+    <div><span>${isEn?"Deadline":"締切"}</span><b>${p.deadline?p.deadline.replaceAll("-","/"):(isEn?"None":"未設定")}</b></div>
+    <div><span>${isEn?"Forecast":"完成予想"}</span><b>${dash.forecast}</b></div>
+  </div>
+  <div class="project-dashboard-strip project-dashboard-compact">
+    <div><span>${isEn?"Started":"着手"}</span><b>${dash.startedPct}%</b></div>
+    <div><span>${isEn?"Today":"今日"}</span><b>${dash.todayDone>=0?"+":""}${dash.todayDone}</b></div>
+    <div><span>${isEn?"7 days":"7日"}</span><b>${dash.weekDone}</b></div>
+  </div>
+</div>`}
       </div>
       <div class="project-item-actions">
-        <button class="project-edit-button">編集</button>
+        <button class="project-edit-button project-icon-button" type="button" aria-label="${isEn?"Project settings":"プロジェクト設定"}" title="${isEn?"Project settings":"プロジェクト設定"}"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.13.37.35.7.64.96.3.27.68.42 1.08.44H21v4h-.09A1.7 1.7 0 0 0 19.4 15z"/></svg></button>
       </div>
     </div>
-    <div class="project-actions"><button class="project-delete-button">この作品を削除</button></div>`;
-    item.querySelector(".project-item-title").textContent=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
-    item.addEventListener("click",e=>{
-      if(Date.now()<(window.__suppressMixedClickUntil||0))return;
-      if(e.target.closest("button,a,input,textarea,select,label"))return;
-      openProject(id);
-    });
+    <button class="project-stage-toggle" type="button" aria-expanded="${expanded}"><span>${isEn?"Stage details":"工程別"}</span><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+    <div class="project-stage-details${expanded?" open":""}">${detailRows}</div>`;
+    item.querySelector(".project-item-title").textContent=title;
+    item.querySelectorAll(".project-stage-name").forEach((el,i)=>{el.textContent=stageStats[i]?.name||(isEn?"New stage":"新しい工程")});
+    item.querySelector(".project-open-title").onclick=e=>{e.stopPropagation();openProject(id)};
     item.querySelector(".project-edit-button").onclick=e=>{e.stopPropagation();openProjectEdit(id)};
-    item.querySelector(".project-delete-button").onclick=()=>{
-      const name=p.title||(languageSettings?.language==="en"?"Untitled":"無題");
-      if(!confirm(`「${name}」を削除しますか？\nこの操作は元に戻せません。`))return;
-      delete projectStore.projects[id];
-      if(projectStore.activeProjectId===id)projectStore.activeProjectId=null;
-      persistProjectStore();
-      renderProjectList();
+    item.querySelector(".project-stage-toggle").onclick=e=>{
+      e.stopPropagation();
+      if(expandedStageDetails.has(id))expandedStageDetails.delete(id);else expandedStageDetails.add(id);
+      const details=item.querySelector(".project-stage-details");
+      const btn=e.currentTarget;
+      const open=expandedStageDetails.has(id);
+      details.classList.toggle("open",open);btn.setAttribute("aria-expanded",String(open));
     };
     list.appendChild(item);
   });
 }
+
 function load(){
   loadProjectStore();
 }
@@ -413,7 +504,7 @@ function showBackupStatus(message){
 function exportBackup(){
   try{
     const data=makeBackup(),date=localDate();
-    const fileName=`漫画制作進捗_全作品_backup_${date}.json`;
+    const fileName=`fillio-backup-${date}.json`;
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
     const url=URL.createObjectURL(blob),link=document.createElement("a");
     link.href=url;link.download=fileName;link.style.display="none";
@@ -445,7 +536,7 @@ function restoreBackup(data){
     return "all";
   }
   // v4以前: 1作品バックアップは新しい作品として追加
-  if(!data||!Number.isInteger(data.totalPages)||data.totalPages<1||data.totalPages>300||!Array.isArray(data.progress))throw new Error("invalid");
+  if(!data||!Number.isInteger(data.totalPages)||data.totalPages<1||data.totalPages>500||!Array.isArray(data.progress))throw new Error("invalid");
   const id=newProjectId();
   projectStore.projects[id]=normalizeProjectData(data);
   projectStore.activeProjectId=id;
@@ -454,7 +545,7 @@ function restoreBackup(data){
   return "single";
 }
 function resizeProgress(n){
-  n=Math.max(1,Math.min(300,Number(n)||48));
+  n=Math.max(1,Math.min(500,Number(n)||48));
   const old=progress;
   progress=Array.from({length:n},(_,p)=>old[p]?[...old[p]]:Array(stages.length).fill(0));
   totalPages=n;currentView=Math.min(currentView,Math.max(0,Math.ceil(n/12)-1));
@@ -479,7 +570,7 @@ function renderStages(){
     const sp=Math.round(st/totalPages*100),dp=Math.round(dn/totalPages*100);
     const d=document.createElement("div");d.className="stage";
     const stageStats=languageSettings?.language==="en" ? `Started ${sp}% · Completed ${dp}%` : `着手 ${sp}% ・ 完成 ${dp}%`;
-    d.innerHTML=`<div class="stage-info"><span>${name}</span><span>${stageStats}</span></div><div class="dual-bar"><div class="started-bar" style="width:${sp}%"></div><div class="done-bar" style="width:${dp}%"></div></div>`;
+    d.innerHTML=`<div class="stage-info"><span>${displayStageName(name,s)}</span><span>${stageStats}</span></div><div class="dual-bar"><div class="started-bar" style="width:${sp}%"></div><div class="done-bar" style="width:${dp}%"></div></div>`;
     stageProgress.appendChild(d);
   });
 }
@@ -590,16 +681,46 @@ function renderHistory(){
 
 }
 
-let stickyPage=null,stickyColor="";
+let stickyPage=null,stickyColor="",stickyTodos=[];
 function openSticky(page){
   stickyPage=page;
   const n=pageNotes[String(page)]||{text:"",color:""};
   stickyColor=n.color||"";
-  document.getElementById("stickyTitle").textContent=`${page}P 付箋`;
+  stickyTodos=Array.isArray(n.todos)?n.todos.map((t,i)=>({id:t.id||(`${Date.now()}-${i}`),text:String(t.text||""),done:!!t.done})):[];
+  document.getElementById("stickyTitle").textContent=uiLang()==="en"?`Page ${page} note`:`${page}P 付箋`;
   document.getElementById("stickyText").value=n.text||"";
+  document.getElementById("stickyTodoInput").value="";
+  renderStickyTodos();
   document.querySelectorAll(".color-pick").forEach(b=>b.classList.toggle("selected",b.dataset.color===stickyColor));
   document.getElementById("stickyModal").classList.add("open");
 }
+
+function renderStickyTodos(){
+  const list=document.getElementById("stickyTodoList");
+  const count=document.getElementById("stickyTodoCount");
+  if(!list||!count)return;
+  list.innerHTML="";
+  const done=stickyTodos.filter(t=>t.done).length;
+  count.textContent=`${done}/${stickyTodos.length}`;
+  stickyTodos.forEach((todo,i)=>{
+    const row=document.createElement("div"); row.className="sticky-todo-item"+(todo.done?" done":"");
+    const check=document.createElement("input"); check.type="checkbox"; check.checked=todo.done; check.setAttribute("aria-label",uiLang()==="en"?"Complete TODO":"TODO完了");
+    check.onchange=()=>{stickyTodos[i].done=check.checked;renderStickyTodos();};
+    const text=document.createElement("span"); text.textContent=todo.text;
+    const del=document.createElement("button"); del.type="button";del.className="sticky-todo-remove";del.textContent="×";del.setAttribute("aria-label",uiLang()==="en"?"Delete TODO":"TODOを削除");
+    del.onclick=()=>{stickyTodos.splice(i,1);renderStickyTodos();};
+    row.append(check,text,del);list.appendChild(row);
+  });
+}
+function addStickyTodo(){
+  const input=document.getElementById("stickyTodoInput");
+  const text=(input?.value||"").trim();if(!text)return;
+  stickyTodos.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,7)}`,text,done:false});
+  input.value="";renderStickyTodos();input.focus();
+}
+document.getElementById("stickyTodoAdd").onclick=addStickyTodo;
+document.getElementById("stickyTodoInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addStickyTodo();}});
+
 document.querySelectorAll(".color-pick").forEach(b=>b.onclick=()=>{
   stickyColor=b.dataset.color||"";
   document.querySelectorAll(".color-pick").forEach(x=>x.classList.toggle("selected",x===b));
@@ -609,8 +730,9 @@ document.getElementById("stickyModal").onclick=e=>{if(e.target.id==="stickyModal
 document.getElementById("stickyDelete").onclick=()=>{
   if(stickyPage===null)return;
   delete pageNotes[String(stickyPage)];
-  stickyColor="";
+  stickyColor="";stickyTodos=[];
   document.getElementById("stickyText").value="";
+  renderStickyTodos();
   save();
   document.getElementById("stickyModal").classList.remove("open");
   renderPages();
@@ -618,7 +740,7 @@ document.getElementById("stickyDelete").onclick=()=>{
 document.getElementById("stickySave").onclick=()=>{
   const text=document.getElementById("stickyText").value.trim();
   if(!stickyColor)stickyColor="#f4dc8a";
-  pageNotes[String(stickyPage)]={text,color:stickyColor};
+  pageNotes[String(stickyPage)]={text,color:stickyColor,todos:stickyTodos.map(t=>({id:t.id,text:t.text,done:!!t.done}))};
   save();
   document.getElementById("stickyModal").classList.remove("open");
   renderPages();
@@ -626,13 +748,13 @@ document.getElementById("stickySave").onclick=()=>{
 
 function renderPages(){
   pages.innerHTML="";
-  const start=currentView*12,end=Math.min(start+12,totalPages);
+  const start=0,end=totalPages;
   for(let p=start;p<end;p++){
     const row=document.createElement("div");row.className="page-row";
     const num=document.createElement("div");num.className="page-number";
     const actualPage=startPage+p, note=pageNotes[String(actualPage)]||{text:"",color:""};
     num.textContent=actualPage;
-    if(note.color)num.style.background=note.color;
+    if(note.color)num.style.setProperty("background",note.color,"important");
     num.onclick=()=>openSticky(actualPage);
     row.appendChild(num);
     for(let s=0;s<stages.length;s++){
@@ -650,23 +772,30 @@ function renderPages(){
     }
     pages.appendChild(row);
   }
-  pages.classList.toggle("short-project",totalPages<=12);
-  const views=Math.ceil(totalPages/12);
-  range.textContent=languageSettings?.language==="en" ? `${startPage+start}–${startPage+end-1} / ${totalPages} pages` : `${startPage+start}–${startPage+end-1} / 全${totalPages}P`;navPage.textContent=`${currentView+1} / ${views}`;
-  prev.disabled=currentView===0;next.disabled=currentView>=views-1;
+  pages.classList.add("prototype-all-pages");
+  range.textContent=languageSettings?.language==="en" ? `${totalPages} pages` : `全${totalPages}P`;
+  navPage.textContent="";
+  prev.disabled=true; next.disabled=true;
 }
 
-// 長押しスライド：最初のマスの状態を、同じ工程の通過マスへコピーする
+// 長押しスライド：最初の移動方向で縦/横を固定し、範囲プレビュー後に指を離して確定する
 let suppressCellClickUntil=0;
 let suppressPageSwipeUntil=0;
 let paintHoldTimer=null;
 let paintMode=false;
+let paintAxis=null;
 let paintStartX=0,paintStartY=0;
 let paintStage=-1,paintValue=0;
-let paintTouched=new Set();
+let paintSourcePage=-1;
 let paintSourceCell=null;
+let paintPreviewCells=new Set();
+let paintLastX=0,paintLastY=0;
+let paintScrollRaf=0;
 const PAINT_HOLD_MS=480;
 const PAINT_CANCEL_MOVE=12;
+const PAINT_AXIS_LOCK_MOVE=10;
+const PAINT_SCROLL_EDGE=72;
+const PAINT_SCROLL_MAX=12;
 
 function setCellVisual(cell,value){
   cell.classList.remove("state0","state1","state2","state-started","state-done");
@@ -677,39 +806,143 @@ function setCellVisual(cell,value){
 function cancelPaintHold(){
   if(paintHoldTimer){clearTimeout(paintHoldTimer);paintHoldTimer=null}
 }
-function paintCellAtPoint(x,y){
-  const el=document.elementFromPoint(x,y);
-  const cell=el?.closest?.(".progress-cell");
-  if(!cell || !pages.contains(cell))return;
-  const p=Number(cell.dataset.pageIndex), s=Number(cell.dataset.stageIndex);
-  if(!Number.isInteger(p)||!Number.isInteger(s)||s!==paintStage)return;
-  const key=p+":"+s;
-  if(paintTouched.has(key))return;
-  paintTouched.add(key);
-  progress[p][s]=paintValue;
-  setCellVisual(cell,paintValue);
+function paintKey(p,s){return `${p}:${s}`}
+function getPaintCell(p,s){
+  return pages.querySelector(`.progress-cell[data-page-index="${p}"][data-stage-index="${s}"]`);
 }
-function finishPaint(){
+function restorePaintPreview(){
+  for(const key of paintPreviewCells){
+    const [p,s]=key.split(":").map(Number);
+    const cell=getPaintCell(p,s);
+    if(cell)setCellVisual(cell,progress[p][s]);
+  }
+  paintPreviewCells.clear();
+}
+function showPaintPreview(endPage,endStage){
+  if(!paintMode)return;
+  const next=new Set();
+  if(paintAxis==="vertical"){
+    endPage=Math.max(0,Math.min(totalPages-1,endPage));
+    const lo=Math.min(paintSourcePage,endPage),hi=Math.max(paintSourcePage,endPage);
+    for(let p=lo;p<=hi;p++)next.add(paintKey(p,paintStage));
+  }else if(paintAxis==="horizontal"){
+    endStage=Math.max(0,Math.min(stages.length-1,endStage));
+    const lo=Math.min(paintStage,endStage),hi=Math.max(paintStage,endStage);
+    for(let s=lo;s<=hi;s++)next.add(paintKey(paintSourcePage,s));
+  }else{
+    next.add(paintKey(paintSourcePage,paintStage));
+  }
+  for(const key of paintPreviewCells){
+    if(!next.has(key)){
+      const [p,s]=key.split(":").map(Number);
+      const cell=getPaintCell(p,s);
+      if(cell)setCellVisual(cell,progress[p][s]);
+    }
+  }
+  for(const key of next){
+    const [p,s]=key.split(":").map(Number);
+    const cell=getPaintCell(p,s);
+    if(cell)setCellVisual(cell,paintValue);
+  }
+  paintPreviewCells=next;
+}
+function updatePaintPoint(x,y){
+  paintLastX=x;paintLastY=y;
+  if(!paintAxis){
+    const dx=x-paintStartX,dy=y-paintStartY;
+    if(Math.max(Math.abs(dx),Math.abs(dy))>=PAINT_AXIS_LOCK_MOVE){
+      paintAxis=Math.abs(dx)>Math.abs(dy)?"horizontal":"vertical";
+    }
+  }
+  const el=document.elementFromPoint(x,y);
+  const cell=el?.closest?.('.progress-cell');
+  if(!cell || !pages.contains(cell))return;
+  const p=Number(cell.dataset.pageIndex),s=Number(cell.dataset.stageIndex);
+  if(!Number.isInteger(p)||!Number.isInteger(s))return;
+  if(paintAxis==="vertical")showPaintPreview(p,paintStage);
+  else if(paintAxis==="horizontal")showPaintPreview(paintSourcePage,s);
+}
+function paintAutoScrollStep(){
+  paintScrollRaf=0;
+  if(!paintMode)return;
+  let dx=0,dy=0;
+  if(paintAxis==="vertical"){
+    const scroller=document.getElementById("stageTableScroll");
+    if(scroller){
+      const r=scroller.getBoundingClientRect();
+      // Excel型では縦方向も工程表自身がスクロールする。長押し中も同じ領域を動かす。
+      const topEdge=Math.max(r.top,0);
+      const bottomEdge=Math.min(r.bottom,window.innerHeight);
+      if(paintLastY<topEdge+PAINT_SCROLL_EDGE){
+        const strength=(topEdge+PAINT_SCROLL_EDGE-paintLastY)/PAINT_SCROLL_EDGE;
+        dy=-Math.max(1,Math.round(PAINT_SCROLL_MAX*Math.min(1,strength)));
+      }else if(paintLastY>bottomEdge-PAINT_SCROLL_EDGE){
+        const strength=(paintLastY-(bottomEdge-PAINT_SCROLL_EDGE))/PAINT_SCROLL_EDGE;
+        dy=Math.max(1,Math.round(PAINT_SCROLL_MAX*Math.min(1,strength)));
+      }
+      if(dy)scroller.scrollTop+=dy;
+    }
+  }else if(paintAxis==="horizontal"){
+    const scroller=document.getElementById("stageTableScroll");
+    if(scroller){
+      const r=scroller.getBoundingClientRect();
+      // 左端は固定ページ番号の幅を除外し、見えているセル領域の端で自動スクロールする。
+      const pageCol=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--progress-page-col"))||28;
+      const leftEdge=r.left+pageCol;
+      const rightEdge=r.right;
+      if(paintLastX<leftEdge+PAINT_SCROLL_EDGE){
+        const strength=(leftEdge+PAINT_SCROLL_EDGE-paintLastX)/PAINT_SCROLL_EDGE;
+        dx=-Math.max(1,Math.round(PAINT_SCROLL_MAX*Math.min(1,strength)));
+      }else if(paintLastX>rightEdge-PAINT_SCROLL_EDGE){
+        const strength=(paintLastX-(rightEdge-PAINT_SCROLL_EDGE))/PAINT_SCROLL_EDGE;
+        dx=Math.max(1,Math.round(PAINT_SCROLL_MAX*Math.min(1,strength)));
+      }
+      if(dx)scroller.scrollLeft+=dx;
+    }
+  }
+  if(dx||dy)updatePaintPoint(paintLastX,paintLastY);
+  paintScrollRaf=requestAnimationFrame(paintAutoScrollStep);
+}
+function startPaintAutoScroll(){
+  if(!paintScrollRaf)paintScrollRaf=requestAnimationFrame(paintAutoScrollStep);
+}
+function stopPaintAutoScroll(){
+  if(paintScrollRaf){cancelAnimationFrame(paintScrollRaf);paintScrollRaf=0}
+}
+function endPaint(commit){
   cancelPaintHold();
+  stopPaintAutoScroll();
   const wasPaintMode=paintMode;
   paintMode=false;
-  if(paintSourceCell)paintSourceCell.classList.remove("paint-source");
+  paintAxis=null;
+  if(paintSourceCell)paintSourceCell.classList.remove('paint-source');
   paintSourceCell=null;
-  if(!wasPaintMode)return;
+  if(!wasPaintMode){paintPreviewCells.clear();return}
   suppressCellClickUntil=Date.now()+500;
   suppressPageSwipeUntil=Date.now()+500;
-  save();
-  updateSummary();
+  if(commit){
+    for(const key of paintPreviewCells){
+      const [p,s]=key.split(":").map(Number);
+      progress[p][s]=paintValue;
+    }
+    paintPreviewCells.clear();
+    save();
+    updateSummary();
+  }else{
+    restorePaintPreview();
+  }
 }
-pages.addEventListener("touchstart",e=>{
+pages.addEventListener('touchstart',e=>{
   if(e.touches.length!==1)return;
-  const cell=e.target.closest?.(".progress-cell");
+  const cell=e.target.closest?.('.progress-cell');
   if(!cell)return;
   cancelPaintHold();
+  stopPaintAutoScroll();
   paintMode=false;
-  paintTouched.clear();
-  paintStartX=e.touches[0].clientX;
-  paintStartY=e.touches[0].clientY;
+  paintAxis=null;
+  paintPreviewCells.clear();
+  paintStartX=paintLastX=e.touches[0].clientX;
+  paintStartY=paintLastY=e.touches[0].clientY;
   paintSourceCell=cell;
   paintHoldTimer=setTimeout(()=>{
     const p=Number(cell.dataset.pageIndex),s=Number(cell.dataset.stageIndex);
@@ -717,29 +950,32 @@ pages.addEventListener("touchstart",e=>{
     paintMode=true;
     paintStage=s;
     paintValue=progress[p][s];
-    paintTouched.add(p+":"+s);
-    cell.classList.add("paint-source");
+    paintSourcePage=p;
+    paintPreviewCells=new Set([paintKey(p,s)]);
+    cell.classList.add('paint-source');
     suppressCellClickUntil=Date.now()+1000;
     suppressPageSwipeUntil=Date.now()+1000;
     if(navigator.vibrate)navigator.vibrate(28);
+    startPaintAutoScroll();
   },PAINT_HOLD_MS);
 },{passive:true});
 
-pages.addEventListener("touchmove",e=>{
+pages.addEventListener('touchmove',e=>{
   if(e.touches.length!==1)return;
   const t=e.touches[0];
+  paintLastX=t.clientX;paintLastY=t.clientY;
   if(!paintMode){
     if(Math.hypot(t.clientX-paintStartX,t.clientY-paintStartY)>PAINT_CANCEL_MOVE)cancelPaintHold();
     return;
   }
-  // 塗りモード中だけ画面スクロール/ページスワイプを止める
+  // 長押し開始後は最初の移動方向へ固定。斜めにぶれても縦/横の範囲だけを変更する。
   e.preventDefault();
   suppressPageSwipeUntil=Date.now()+500;
-  paintCellAtPoint(t.clientX,t.clientY);
+  updatePaintPoint(t.clientX,t.clientY);
 },{passive:false});
 
-pages.addEventListener("touchend",finishPaint,{passive:true});
-pages.addEventListener("touchcancel",finishPaint,{passive:true});
+pages.addEventListener('touchend',()=>endPaint(true),{passive:true});
+pages.addEventListener('touchcancel',()=>endPaint(false),{passive:true});
 
 function render(){renderDynamicTableHead();renderPages();updateSummary()}
 prev.onclick=()=>{if(currentView>0){currentView--;renderPages()}};
@@ -782,7 +1018,7 @@ document.getElementById("backupFile").addEventListener("change",async e=>{
 });
 
 
-// メモ一覧表示中は、背面の12Pスワイプへタッチ操作を伝えない
+// メモ一覧表示中は、背面の工程表へタッチ操作を伝えない
 const memoOverlay=document.getElementById("memoListModal");
 ["touchstart","touchmove","touchend"].forEach(type=>{
   memoOverlay.addEventListener(type,e=>e.stopPropagation(),{passive:true});
@@ -802,7 +1038,7 @@ function renderMemoList(){
     .filter(x=>memoListFilter==="all"||x.note.color===memoListFilter)
     .sort((a,b)=>a.page-b.page);
   if(!entries.length){
-    body.innerHTML='<div class="memo-empty">該当するメモはありません。</div>';
+    body.innerHTML=`<div class="memo-empty">${uiLang()==="en"?"No matching notes.":"該当するメモはありません。"}</div>`;
     return;
   }
   entries.forEach(({index,page,note})=>{
@@ -812,22 +1048,44 @@ function renderMemoList(){
     pg.className="memo-page";
     pg.style.background=note.color||"#f4dc8a";
     pg.textContent=page+"P";
+    const content=document.createElement("div");
+    content.className="memo-content";
     const tx=document.createElement("div");
     tx.className="memo-text";
-    tx.textContent=(note.text||"").trim()||"（メモ本文なし）";
+    tx.textContent=(note.text||"").trim()||(uiLang()==="en"?"(No note text)":"（メモ本文なし）");
+    content.appendChild(tx);
+    const todos=Array.isArray(note.todos)?note.todos:[];
+    if(todos.length){
+      const todoBox=document.createElement("div");todoBox.className="memo-todos";
+      todos.forEach((todo,todoIndex)=>{
+        const item=document.createElement("label");item.className="memo-todo-item"+(todo.done?" done":"");
+        const check=document.createElement("input");check.type="checkbox";check.checked=!!todo.done;
+        check.setAttribute("aria-label",uiLang()==="en"?"Toggle TODO":"TODOを切り替え");
+        const label=document.createElement("span");label.textContent=String(todo.text||"");
+        check.onchange=()=>{
+          note.todos[todoIndex].done=check.checked;item.classList.toggle("done",check.checked);
+          save();renderMemoList();
+        };
+        item.append(check,label);todoBox.appendChild(item);
+      });
+      const done=todos.filter(t=>t.done).length;
+      const summary=document.createElement("div");summary.className="memo-todo-summary";
+      summary.textContent=`TODO ${done}/${todos.length}`;
+      content.append(todoBox,summary);
+    }
     const jump=document.createElement("button");
     jump.className="memo-jump";
-    jump.textContent="移動";
+    jump.textContent=uiLang()==="en"?"Go":"移動";
     jump.onclick=()=>{
       if(index<0||index>=totalPages)return;
-      currentView=Math.floor(index/12);
       document.getElementById("memoListModal").classList.remove("open");
       document.body.style.overflow="";
       render();
       const pages=document.getElementById("pages");
-      if(pages)pages.scrollIntoView({behavior:"smooth",block:"start"});
+      const targetRow=pages?.children?.[index];
+      if(targetRow)targetRow.scrollIntoView({behavior:"smooth",block:"center"});
     };
-    row.append(pg,tx,jump);
+    row.append(pg,content,jump);
     body.appendChild(row);
   });
 }
@@ -883,7 +1141,7 @@ function renderNewProjectStageEditor(){
     };
     box.appendChild(row);
   });
-  document.getElementById("newStageAddButton").disabled=newProjectStageDraft.length>=8;
+  document.getElementById("newStageAddButton").disabled=false;
 }
 function resetNewProjectStages(){
   newProjectStageDraft=[...DEFAULT_STAGES];
@@ -896,31 +1154,77 @@ document.getElementById("newStageToggle").addEventListener("click",()=>{
   document.getElementById("newStageToggle").classList.toggle("open");
 });
 document.getElementById("newStageAddButton").addEventListener("click",()=>{
-  if(newProjectStageDraft.length>=8)return;
-  newProjectStageDraft.push("新しい工程");
+  if(newProjectStageDraft.length>=MAX_STAGES){alert(languageSettings?.language==="en"?`Up to ${MAX_STAGES} stages.`:`工程は最大${MAX_STAGES}個までです。`);return}
+  newProjectStageDraft.push("");
   renderNewProjectStageEditor();
 });
 
+
+function populatePageSelect(selectId){
+  const select=document.getElementById(selectId);
+  if(!select||select.options.length)return;
+  const frag=document.createDocumentFragment();
+  for(let page=1;page<=500;page++){
+    const option=document.createElement("option");
+    option.value=String(page);
+    option.textContent=String(page);
+    frag.appendChild(option);
+  }
+  select.appendChild(frag);
+}
+["defaultStartPage","defaultEndPage","newProjectStart","newProjectEnd"].forEach(populatePageSelect);
+
+let modalPageScrollY=0;
+function lockPageScroll(){
+  if(document.body.dataset.modalScrollLocked==="1")return;
+  modalPageScrollY=window.scrollY||document.documentElement.scrollTop||0;
+  document.body.dataset.modalScrollLocked="1";
+  document.body.style.position="fixed";
+  document.body.style.top=`-${modalPageScrollY}px`;
+  document.body.style.left="0";
+  document.body.style.right="0";
+  document.body.style.width="100%";
+  document.body.style.overflow="hidden";
+}
+function unlockPageScroll(){
+  if(document.body.dataset.modalScrollLocked!=="1")return;
+  delete document.body.dataset.modalScrollLocked;
+  document.body.style.position="";
+  document.body.style.top="";
+  document.body.style.left="";
+  document.body.style.right="";
+  document.body.style.width="";
+  document.body.style.overflow="";
+  window.scrollTo(0,modalPageScrollY);
+}
+function closeAppSettings(){
+  document.getElementById("appSettingsModal").classList.remove("open");
+  unlockPageScroll();
+}
 
 document.getElementById("appSettingsButton").onclick=()=>{
  document.getElementById("defaultStartPage").value=projectDefaults.startPage;
  document.getElementById("defaultEndPage").value=projectDefaults.endPage;
  defaultStageDraft=[...projectDefaults.stages];renderDefaultStageEditor();
+ applyThemeColor(appSettings.themeColor);
+ lockPageScroll();
  document.getElementById("appSettingsModal").classList.add("open");
 };
-document.getElementById("settingsCancel").onclick=()=>document.getElementById("appSettingsModal").classList.remove("open");
-document.getElementById("appSettingsModal").onclick=e=>{if(e.target.id==="appSettingsModal")e.currentTarget.classList.remove("open")};
-document.getElementById("defaultStageAdd").onclick=()=>{if(defaultStageDraft.length<8){defaultStageDraft.push(languageSettings.language==="en"?"New Stage":"新しい工程");renderDefaultStageEditor()}};
+document.getElementById("settingsCancel").onclick=closeAppSettings;
+document.getElementById("appSettingsModal").onclick=e=>{if(e.target.id==="appSettingsModal")closeAppSettings()};
+document.getElementById("defaultStageAdd").onclick=()=>{if(defaultStageDraft.length>=MAX_STAGES){alert(languageSettings?.language==="en"?`Up to ${MAX_STAGES} stages.`:`工程は最大${MAX_STAGES}個までです。`);return}defaultStageDraft.push(languageSettings.language==="en"?"New Stage":"新しい工程");renderDefaultStageEditor()};
 document.getElementById("settingsSave").onclick=()=>{
- let a=Math.max(1,Math.min(999,Number(document.getElementById("defaultStartPage").value)||1));
- let b=Math.max(a,Math.min(999,Number(document.getElementById("defaultEndPage").value)||a));
- if(b-a+1>300){alert(appSettings.language==="en"?"Up to 300 pages per project.":"1作品300ページまでです。");return}
+ let a=Math.max(1,Math.min(500,Number(document.getElementById("defaultStartPage").value)||1));
+ let b=Math.max(a,Math.min(500,Number(document.getElementById("defaultEndPage").value)||a));
+ if(b-a+1>500){alert(appSettings.language==="en"?"Up to 500 pages per project.":"1作品500ページまでです。");return}
  const ss=defaultStageDraft.map(x=>String(x||"").trim()).filter(Boolean);
  if(!ss.length)return;
- appSettings=normalizeAppSettings({language:document.getElementById("appLanguage").value,defaultStartPage:a,defaultEndPage:b,defaultStages:ss});
- persistAppSettings();applyLanguage();
- document.getElementById("appSettingsModal").classList.remove("open");
+ appSettings=normalizeAppSettings({language:document.getElementById("appLanguage").value,defaultStartPage:a,defaultEndPage:b,defaultStages:ss,themeColor:document.querySelector(".theme-color-option.selected")?.dataset.themeColor||appSettings.themeColor});
+ persistAppSettings();applyLanguage();applyThemeColor();
+ closeAppSettings();
 };
+
+document.querySelectorAll(".theme-color-option").forEach(btn=>btn.addEventListener("click",()=>applyThemeColor(btn.dataset.themeColor)));
 
 document.getElementById("newProjectButton").onclick=()=>{
   document.getElementById("newProjectTitle").value="";
@@ -933,28 +1237,33 @@ document.getElementById("newProjectButton").onclick=()=>{
   renderNewProjectStageEditor();
   document.getElementById("newStagePanel").classList.remove("open");
   document.getElementById("newStageToggle").classList.remove("open");
+  lockPageScroll();
   document.getElementById("projectModal").classList.add("open");
-  setTimeout(()=>document.getElementById("newProjectTitle").focus(),50);
+  // Do not auto-focus: opening the create sheet should not summon the mobile keyboard.
 };
-document.getElementById("cancelNewProject").onclick=()=>document.getElementById("projectModal").classList.remove("open");
-document.getElementById("projectModal").onclick=e=>{if(e.target.id==="projectModal")e.currentTarget.classList.remove("open")};
+function closeNewProjectModal(){
+  document.getElementById("projectModal").classList.remove("open");
+  unlockPageScroll();
+}
+document.getElementById("cancelNewProject").onclick=closeNewProjectModal;
+document.getElementById("projectModal").onclick=e=>{if(e.target.id==="projectModal")closeNewProjectModal()};
 function updateNewProjectTotal(){
-  let a=Math.max(1,Math.min(999,Number(document.getElementById("newProjectStart").value)||1));
-  let b=Math.max(a,Math.min(999,Number(document.getElementById("newProjectEnd").value)||a));
+  let a=Math.max(1,Math.min(500,Number(document.getElementById("newProjectStart").value)||1));
+  let b=Math.max(a,Math.min(500,Number(document.getElementById("newProjectEnd").value)||a));
   document.getElementById("newProjectTotal").textContent=`全${b-a+1}P`;
 }
-document.getElementById("newProjectStart").addEventListener("input",updateNewProjectTotal);
-document.getElementById("newProjectEnd").addEventListener("input",updateNewProjectTotal);
+document.getElementById("newProjectStart").addEventListener("change",updateNewProjectTotal);
+document.getElementById("newProjectEnd").addEventListener("change",updateNewProjectTotal);
 document.getElementById("createNewProject").onclick=()=>{
   const title=document.getElementById("newProjectTitle").value.trim();
-  let a=Math.max(1,Math.min(999,Number(document.getElementById("newProjectStart").value)||1));
-  let b=Math.max(a,Math.min(999,Number(document.getElementById("newProjectEnd").value)||a));
-  if(b-a+1>300){alert("1作品300ページまでです。");return;}
+  let a=Math.max(1,Math.min(500,Number(document.getElementById("newProjectStart").value)||1));
+  let b=Math.max(a,Math.min(500,Number(document.getElementById("newProjectEnd").value)||a));
+  if(b-a+1>500){alert("1作品500ページまでです。");return;}
   const id=newProjectId();
   projectStore.projects[id]=freshProjectData(title,a,b);
   // フォルダ内から作成した場合は、そのフォルダに所属させる
   projectStore.projects[id].folderId=currentFolderId||null;
-  const newStages=newProjectStageDraft.map((x,i)=>String(x||"").trim()||(appSettings.language==="en"?`Stage ${i+1}`:`工程${i+1}`));
+  const newStages=newProjectStageDraft.map(x=>String(x??"").trim());
   projectStore.projects[id].stages=newStages;
   projectStore.projects[id].progress=Array.from({length:b-a+1},()=>Array(newStages.length).fill(0));
   projectStore.projects[id].creationStartDate=document.getElementById("newProjectCreationStartDate").value||"";
@@ -969,66 +1278,11 @@ document.getElementById("createNewProject").onclick=()=>{
   }
   projectStore.activeProjectId=id;
   persistProjectStore();
-  document.getElementById("projectModal").classList.remove("open");
+  closeNewProjectModal();
   openProject(id);
 };
 
 load();
-
-
-// --- Smooth swipe navigation prototype ---
-(function(){
-  const swipeArea=document.getElementById("pages");
-  if(!swipeArea)return;
-
-  let startX=0,startY=0,tracking=false,animating=false;
-  const MIN_X=55,MAX_Y=50;
-
-  function changePage(direction){
-    if(animating)return;
-    const maxView=Math.max(0,Math.ceil(totalPages/12)-1);
-    if(direction==="next" && currentView>=maxView)return;
-    if(direction==="prev" && currentView<=0)return;
-
-    animating=true;
-    const outClass=direction==="next"?"page-slide-out-left":"page-slide-out-right";
-    const inClass=direction==="next"?"page-slide-in-from-right":"page-slide-in-from-left";
-
-    swipeArea.classList.remove("page-slide-in-from-right","page-slide-in-from-left");
-    swipeArea.classList.add(outClass);
-
-    setTimeout(()=>{
-      currentView += direction==="next" ? 1 : -1;
-      swipeArea.classList.remove(outClass);
-      renderPages();
-
-      // Restart entrance animation cleanly.
-      void swipeArea.offsetWidth;
-      swipeArea.classList.add(inClass);
-      setTimeout(()=>{
-        swipeArea.classList.remove(inClass);
-        animating=false;
-      },230);
-    },130);
-  }
-
-  swipeArea.addEventListener("touchstart",e=>{
-    if(animating || e.touches.length!==1)return;
-    startX=e.touches[0].clientX;
-    startY=e.touches[0].clientY;
-    tracking=true;
-  },{passive:true});
-
-  swipeArea.addEventListener("touchend",e=>{
-    if(!tracking || !e.changedTouches.length)return;
-    tracking=false;
-    if(Date.now()<suppressPageSwipeUntil)return;
-    const dx=e.changedTouches[0].clientX-startX;
-    const dy=e.changedTouches[0].clientY-startY;
-    if(Math.abs(dx)<MIN_X || Math.abs(dy)>MAX_Y || Math.abs(dx)<=Math.abs(dy))return;
-    changePage(dx<0?"next":"prev");
-  },{passive:true});
-})();
 
 
 // --- 工程カスタマイズ prototype ---
@@ -1073,19 +1327,76 @@ function renderStageEditor(){
     box.appendChild(row);
   });
   const add=document.getElementById("stageAddButton");
-  if(add)add.disabled=stageDraft.length>=8;
+  if(add)add.disabled=false;
 }
 document.getElementById("stageAddButton")?.addEventListener("click",()=>{
-  if(stageDraft.length>=8)return;
-  stageDraft.push("新しい工程");
+  if(stageDraft.length>=MAX_STAGES){alert(languageSettings?.language==="en"?`Up to ${MAX_STAGES} stages.`:`工程は最大${MAX_STAGES}個までです。`);return}
+  stageDraft.push("");
   stageDraftMeta.push({originalIndex:null});
   renderStageEditor();
 });
+function displayStageName(name,index){
+  const value=String(name??"").trim();
+  if(value)return value;
+  return languageSettings?.language==="en"?"New Stage":"新しい工程";
+}
 function renderDynamicTableHead(){
   const head=document.getElementById("tableHead"); if(!head)return;
   document.documentElement.style.setProperty("--stage-count",String(stages.length));
-  head.innerHTML="<div></div>"+stages.map(n=>`<div class="head">${escapeStageHtml(n)}</div>`).join("");
+  head.innerHTML=`<div class="table-head-corner"></div>${stages.map((n,i)=>`<div class="head">${escapeStageHtml(displayStageName(n,i))}</div>`).join("")}`;
+  requestAnimationFrame(updateInitialTableCellSize);
 }
+
+// 横方向は工程名とセルを同じスクロール領域に置き、ブラウザのネイティブスクロールだけで動かす。
+// JSは工程ヘッダーの「縦方向」の追従だけを担当する。
+function updateInitialTableCellSize(){
+  const scroller=document.getElementById("stageTableScroll");
+  if(!scroller)return;
+  const root=getComputedStyle(document.documentElement);
+  const pageCol=parseFloat(root.getPropertyValue("--progress-page-col"))||28;
+  const gap=parseFloat(root.getPropertyValue("--progress-grid-gap"))||3;
+  // 初期5工程 + ページ番号が、端数なく表示幅に収まるサイズ。
+  const visibleStages=5;
+  const scrollerStyle=getComputedStyle(scroller);
+  const sidePadding=(parseFloat(scrollerStyle.paddingLeft)||0)+(parseFloat(scrollerStyle.paddingRight)||0);
+  const available=scroller.clientWidth-sidePadding-pageCol-gap*visibleStages;
+  if(available>0){
+    document.documentElement.style.setProperty("--progress-cell-size",`${available/visibleStages}px`);
+  }
+  // 縦方向もセルの途中で切れない高さに丸める。
+  requestAnimationFrame(updateInitialTableViewportHeight);
+}
+function updateInitialTableViewportHeight(){
+  const scroller=document.getElementById("stageTableScroll");
+  const anchor=document.getElementById("tableHeadAnchor");
+  if(!scroller||!anchor)return;
+  const header=Math.ceil(anchor.getBoundingClientRect().height);
+  const firstRow=scroller.querySelector("#pages .page-row");
+  if(!firstRow)return;
+  const rowStyle=getComputedStyle(firstRow);
+  const rowHeight=Math.ceil(firstRow.getBoundingClientRect().height);
+  const rowGap=parseFloat(rowStyle.marginBottom)||0;
+  const rowOuter=rowHeight+rowGap;
+  const scrollerStyle=getComputedStyle(scroller);
+  const padTop=parseFloat(scrollerStyle.paddingTop)||0;
+  const padBottom=parseFloat(scrollerStyle.paddingBottom)||0;
+  const cap=Math.min(window.innerHeight*0.72,760);
+  const rows=Math.max(3,Math.floor((cap-header-padTop-padBottom)/rowOuter));
+  // ヘッダー + 完全な行だけで表示高を構成し、次の行が途中で見えないようにする。
+  const exact=Math.ceil(header+padTop+padBottom+rows*rowOuter);
+  document.documentElement.style.setProperty("--stage-grid-height",`${exact}px`);
+}
+
+// Excel-style grid: vertical and horizontal header following are native CSS sticky.
+// No scroll-position synchronization is required.
+(function setupNativeGridSizing(){
+  const scroller=document.getElementById("stageTableScroll");
+  if(!scroller)return;
+  const resize=()=>updateInitialTableCellSize();
+  window.addEventListener("resize",resize,{passive:true});
+  if(window.ResizeObserver)new ResizeObserver(resize).observe(scroller);
+  resize();
+})();
 
 let editingProjectId=null;
 function updateEditProjectTotal(){
@@ -1123,7 +1434,7 @@ document.getElementById("saveEditProject").addEventListener("click",()=>{
   const newTotal=newEnd-newStart+1;
   const oldStart=p.startPage||1, oldProgress=Array.isArray(p.progress)?p.progress:[];
   const oldStages=Array.isArray(p.stages)&&p.stages.length?[...p.stages]:[...DEFAULT_STAGES];
-  const cleanedStages=stageDraft.map((x,i)=>String(x||"").trim()||`工程${i+1}`);
+  const cleanedStages=stageDraft.map(x=>String(x??"").trim());
   // Each draft item carries its original column index, so rename/reorder preserves the exact progress column.
   const mapping=stageDraftMeta.map(x=>x.originalIndex);
   p.stages=cleanedStages;
@@ -1148,6 +1459,16 @@ const editOverlay=document.getElementById("editProjectModal");
   editOverlay.addEventListener(type,e=>e.stopPropagation(),{passive:true});
 });
 
+
+// Library help
+const libraryHelpButton=document.getElementById("libraryHelpButton");
+const libraryHelpModal=document.getElementById("libraryHelpModal");
+const libraryHelpClose=document.getElementById("libraryHelpClose");
+function openLibraryHelp(){lockPageScroll();libraryHelpModal.classList.add("open");libraryHelpModal.setAttribute("aria-hidden","false")}
+function closeLibraryHelp(){libraryHelpModal.classList.remove("open");libraryHelpModal.setAttribute("aria-hidden","true");unlockPageScroll()}
+libraryHelpButton?.addEventListener("click",openLibraryHelp);
+libraryHelpClose?.addEventListener("click",closeLibraryHelp);
+libraryHelpModal?.addEventListener("click",e=>{if(e.target===libraryHelpModal)closeLibraryHelp()});
 
 // 使い方ヘルプ
 const helpButton=document.getElementById("helpButton");
@@ -1185,7 +1506,7 @@ function finishReorder(){
  if(!reorderDragging)return;
  reorderDragging.classList.remove("reorder-dragging");clearReorderMarks();reorderDragging=null;
  document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
- document.querySelectorAll(".folder-icon").forEach(x=>x.textContent="📁");
+ 
  saveProjectOrderFromDOM();
  setTimeout(renderFoldersAndFilter,0);
 }
@@ -1264,7 +1585,7 @@ function ensureFolders(){
  Object.values(projectStore.projects||{}).forEach(p=>{if(!("folderId" in p))p.folderId=null});
  if(!Array.isArray(projectStore.rootOrder))projectStore.rootOrder=[];
  const keys=[];
- Object.keys(projectStore.folders).forEach(id=>keys.push("f:"+id));
+ Object.keys(projectStore.folders).forEach(id=>{if(!projectStore.folders[id]?.trashedAt)keys.push("f:"+id)});
  (projectStore.projectOrder||[]).forEach(id=>{
    if(projectStore.projects[id]&&!projectStore.projects[id].folderId)keys.push("p:"+id);
  });
@@ -1275,7 +1596,7 @@ function ensureFolders(){
  projectStore.rootOrder=projectStore.rootOrder.filter(k=>valid.includes(k));
  valid.forEach(k=>{if(!projectStore.rootOrder.includes(k))projectStore.rootOrder.push(k)});
 }
-function folderCount(fid){return Object.values(projectStore.projects||{}).filter(p=>p.folderId===fid).length}
+function folderCount(fid){return Object.values(projectStore.projects||{}).filter(p=>p.folderId===fid&&!p.trashedAt).length}
 function renderFoldersAndFilter(){
  if(folderRendering)return;
  folderRendering=true;
@@ -1284,14 +1605,18 @@ function renderFoldersAndFilter(){
  list.querySelectorAll(".folder-item").forEach(x=>x.remove());
  const head=document.getElementById("folderHead"),toolbar=document.getElementById("folderToolbar");
  if(currentFolderId&&projectStore.folders[currentFolderId]){
-   head.classList.add("show");toolbar.style.display="none";
-   document.getElementById("folderHeadTitle").innerHTML=`<button type="button" class="crumb-link" data-nav="root">${languageSettings?.language==="en"?"Projects":"作品一覧"}</button><span class="crumb-sep">›</span><span class="crumb-current">${String(projectStore.folders[currentFolderId].name).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</span>`;
+   head?.classList.add("show");if(toolbar)toolbar.style.display="none";
+   document.getElementById("folderHeadTitle").innerHTML=`<button type="button" class="crumb-link" data-nav="root">${"Library"}</button><span class="crumb-sep">›</span><span class="crumb-current">${String(projectStore.folders[currentFolderId].name).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</span>`;
  const renameBtn=document.getElementById("folderRename");
  const deleteBtn=document.getElementById("folderDelete");
  if(renameBtn)renameBtn.style.display="";
- if(deleteBtn)deleteBtn.style.display="";
+ if(deleteBtn){deleteBtn.style.display="";deleteBtn.textContent=languageSettings?.language==="en"?"Remove":"解除";}
  }else{
-   currentFolderId=null;head.classList.remove("show");toolbar.style.display="flex";
+   currentFolderId=null;head?.classList.remove("show");if(toolbar)toolbar.style.display="flex";
+   const renameBtn=document.getElementById("folderRename");
+   const deleteBtn=document.getElementById("folderDelete");
+   if(renameBtn)renameBtn.style.display="none";
+   if(deleteBtn)deleteBtn.style.display="none";
  }
  [...list.querySelectorAll(".project-item[data-project-id]")].forEach(el=>{
    const p=projectStore.projects[el.dataset.projectId];
@@ -1304,24 +1629,26 @@ function renderFoldersAndFilter(){
      const p=projectStore.projects[pid];
      if(!p||p.folderId!==currentFolderId)return;
      if(item.querySelector(".folder-eject"))return;
-     const actions=item.querySelector(".project-actions")||item;
+     const actions=item.querySelector(".project-item-actions")||item;
      const btn=document.createElement("button");
      btn.type="button";
-     btn.className="folder-eject";
-     btn.textContent="フォルダから戻す";
+     btn.className="folder-eject project-icon-button";
+     btn.setAttribute("aria-label",languageSettings?.language==="en"?"Remove from folder":"フォルダから解除");
+     btn.title=languageSettings?.language==="en"?"Remove from folder":"フォルダから解除";
+     btn.innerHTML='<svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7l-5 5 5 5"/><path d="M4 12h10a6 6 0 0 1 6 6v1"/></svg>';
      btn.addEventListener("click",e=>{
        e.stopPropagation();
        p.folderId=null;
        persistProjectStore();
        renderFoldersAndFilter();
      });
-     actions.prepend(btn);
+     actions.append(btn);
    });
  }
  if(!currentFolderId){
-   Object.entries(projectStore.folders).forEach(([fid,f])=>{
+   Object.entries(projectStore.folders).filter(([,f])=>!f?.trashedAt).forEach(([fid,f])=>{
      const el=document.createElement("div");el.className="folder-item";el.dataset.folderId=fid;el.dataset.orderKey="f:"+fid;
-     el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon">📁</span> ${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</div><div class="folder-meta">${folderCount(fid)}${languageSettings?.language==="en"?" projects":"作品"}</div></div></div>`;
+     el.innerHTML=`<div class="folder-row"><div><div class="folder-name"><span class="folder-icon"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg></span><span data-user-text="1">${String(f.name).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[c]))}</span></div><div class="folder-meta">${folderCount(fid)}${languageSettings?.language==="en"?" projects":"作品"}</div></div></div>`;
      const openFolder=()=>{
        currentFolderId=fid;
        renderFoldersAndFilter();
@@ -1354,7 +1681,7 @@ function createFolder(){
  persistProjectStore();input.value="";document.getElementById("folderModal").classList.remove("open");document.body.style.overflow="";
  renderFoldersAndFilter();
 }
-document.getElementById("folderAdd")?.addEventListener("click",()=>{document.getElementById("folderModal").classList.add("open");document.body.style.overflow="hidden";setTimeout(()=>document.getElementById("folderNameInput").focus(),50)});
+document.getElementById("folderAdd")?.addEventListener("click",()=>{document.getElementById("folderModal").classList.add("open");document.body.style.overflow="hidden";});
 document.getElementById("folderCancel")?.addEventListener("click",()=>{document.getElementById("folderModal").classList.remove("open");document.body.style.overflow=""});
 document.getElementById("folderCreate")?.addEventListener("click",createFolder);
 // Android/file://でも確実に反応する予備の委譲ハンドラ
@@ -1373,12 +1700,42 @@ document.getElementById("folderBack")?.addEventListener("click",e=>{
  renderFoldersAndFilter();
  saveViewState("root");
 });
+document.getElementById("folderRename")?.addEventListener("click",()=>{
+ if(!currentFolderId)return;
+ const f=projectStore.folders?.[currentFolderId];if(!f)return;
+ const modal=document.getElementById("folderRenameModal"),input=document.getElementById("folderRenameInput");
+ input.value=f.name||"";modal.classList.add("open");document.body.style.overflow="hidden";
+ setTimeout(()=>{input.focus();input.select();},50);
+});
+function closeFolderRename(){
+ document.getElementById("folderRenameModal")?.classList.remove("open");
+ document.body.style.overflow="";
+}
+function saveFolderRename(){
+ if(!currentFolderId)return closeFolderRename();
+ const f=projectStore.folders?.[currentFolderId];if(!f)return closeFolderRename();
+ const name=document.getElementById("folderRenameInput").value.trim();
+ if(!name)return;
+ f.name=name;persistProjectStore();closeFolderRename();renderFoldersAndFilter();saveViewState("folder");
+}
+document.getElementById("folderRenameCancel")?.addEventListener("click",closeFolderRename);
+document.getElementById("folderRenameSave")?.addEventListener("click",saveFolderRename);
+document.getElementById("folderRenameInput")?.addEventListener("keydown",e=>{if(e.key==="Enter")saveFolderRename()});
+document.getElementById("folderRenameModal")?.addEventListener("click",e=>{if(e.target.id==="folderRenameModal")closeFolderRename()});
 document.getElementById("folderDelete")?.addEventListener("click",()=>{
  if(!currentFolderId)return;
  const f=projectStore.folders[currentFolderId];if(!f)return;
- if(!confirm(`「${f.name}」を削除しますか？\n中の作品は作品一覧へ戻ります。`))return;
- Object.values(projectStore.projects).forEach(p=>{if(p.folderId===currentFolderId)p.folderId=null});
- delete projectStore.folders[currentFolderId];currentFolderId=null;persistProjectStore();renderProjectHome();setTimeout(renderFoldersAndFilter,0);
+ if(!confirm(languageSettings?.language==="en"?`Remove folder “${f.name}”?\nProjects inside will return to Projects.`:`「${f.name}」を解除しますか？\n中の作品は作品一覧へ戻ります。`))return;
+ const deletedFolderId=currentFolderId;
+ Object.values(projectStore.projects).forEach(p=>{if(p.folderId===deletedFolderId)p.folderId=null});
+ delete projectStore.folders[deletedFolderId];
+ if(Array.isArray(projectStore.rootOrder))projectStore.rootOrder=projectStore.rootOrder.filter(k=>k!=="f:"+deletedFolderId);
+ currentFolderId=null;
+ persistProjectStore();
+ // 削除後は既存のルート一覧遷移を通す。
+ // 旧コードの renderProjectHome() は存在しない関数名で、ここで例外になり
+ // DOMだけ削除前のフォルダ画面に残っていた。
+ showProjectHome();
 });
 
 
@@ -1452,13 +1809,12 @@ document.addEventListener("touchmove",e=>{
  const bothEmpty=!folderDropTarget&&!nextTarget;
  if(!sameTarget&&!bothEmpty){
    document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
-   document.querySelectorAll(".folder-icon").forEach(x=>x.textContent="📁");
+   
    folderDropTarget=nextTarget;
    if(folderDropTarget?.type==="folder"){
      const targetFolder=document.querySelector(`.folder-item[data-folder-id="${CSS.escape(folderDropTarget.id)}"]`);
      targetFolder?.classList.add("drag-over");
-     const icon=targetFolder?.querySelector(".folder-icon");
-     if(icon)icon.textContent="📂";
+     
    }
  }
 },{passive:true});
@@ -1470,7 +1826,7 @@ document.addEventListener("touchend",()=>{
    persistProjectStore();
  }
  document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
- document.querySelectorAll(".folder-icon").forEach(x=>x.textContent="📁");
+ 
  folderDropTarget=null;
  setTimeout(renderFoldersAndFilter,0);
 },{capture:true,passive:true});
@@ -1479,7 +1835,7 @@ document.addEventListener("touchend",()=>{
 // フォルダ＋作品 共通並び替え（ルート一覧）
 (function(){
  const list=document.getElementById("projectList"); if(!list)return;
- let drag=null,hold=null,sx=0,sy=0,dropFolderId=null;
+ let drag=null,hold=null,sx=0,sy=0,dropFolderId=null,dragGhost=null,trashOver=false;
  const HOLD=480,CANCEL=12;
  const visibleItems=()=>[...list.querySelectorAll(":scope > .folder-item,:scope > .project-item")]
    .filter(el=>el.classList.contains("folder-item")||el.style.display!=="none");
@@ -1490,11 +1846,31 @@ document.addEventListener("touchend",()=>{
    projectStore.projectOrder=projectStore.rootOrder.filter(k=>k.startsWith("p:")).map(k=>k.slice(2));
    persistProjectStore();
  }
+ function removeGhost(){if(dragGhost){dragGhost.remove();dragGhost=null}}
+ function updateGhost(t){if(!dragGhost)return;dragGhost.style.left=t.clientX+"px";dragGhost.style.top=t.clientY+"px"}
+ function setTrashState(t){
+   const zone=document.getElementById("dragTrashZone");
+   if(!zone)return;
+   zone.classList.add("show");
+   const r=zone.getBoundingClientRect();
+   trashOver=!!(drag&&t.clientX>=r.left-10&&t.clientX<=r.right+10&&t.clientY>=r.top-28&&t.clientY<=r.bottom+18);
+   zone.classList.toggle("over",trashOver);
+ }
  function finish(){
    clearTimeout(hold);hold=null;
    if(!drag)return;
    const pid=drag.dataset.projectId;
-   if(dropFolderId&&pid&&projectStore.projects[pid]){
+   const fid=drag.dataset.folderId;
+   if(trashOver&&fid&&projectStore.folders?.[fid]){
+     projectStore.folders[fid].trashedAt=Date.now();
+     projectStore.rootOrder=(projectStore.rootOrder||[]).filter(k=>k!=="f:"+fid);
+     persistProjectStore();
+   }else if(trashOver&&pid&&projectStore.projects[pid]){
+     const p=projectStore.projects[pid];p.trashedAt=Date.now();p.folderId=null;
+     projectStore.rootOrder=(projectStore.rootOrder||[]).filter(k=>k!=="p:"+pid);
+     projectStore.projectOrder=(projectStore.projectOrder||[]).filter(id=>id!==pid);
+     persistProjectStore();
+   }else if(dropFolderId&&pid&&projectStore.projects[pid]){
      projectStore.projects[pid].folderId=dropFolderId;
      projectStore.rootOrder=(projectStore.rootOrder||[]).filter(k=>k!=="p:"+pid);
      persistProjectStore();
@@ -1503,8 +1879,9 @@ document.addEventListener("touchend",()=>{
    }
    drag.classList.remove("mixed-root-dragging");
    document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
-   document.querySelectorAll(".folder-icon").forEach(x=>x.textContent="📁");
-   drag=null;dropFolderId=null;window.__mixedRootDragging=false;
+   const trashZone=document.getElementById("dragTrashZone");trashZone?.classList.remove("show","over");
+   removeGhost();
+   drag=null;dropFolderId=null;trashOver=false;window.__mixedRootDragging=false;
    setTimeout(renderFoldersAndFilter,0);
  }
  list.addEventListener("touchstart",e=>{
@@ -1516,7 +1893,10 @@ document.addEventListener("touchend",()=>{
    const t=e.touches[0];sx=t.clientX;sy=t.clientY;
    clearTimeout(hold);
    hold=setTimeout(()=>{
-     drag=item; dropFolderId=null; item.classList.add("mixed-root-dragging");
+     drag=item; dropFolderId=null; trashOver=false; item.classList.add("mixed-root-dragging");
+     dragGhost=item.cloneNode(true);dragGhost.classList.remove("mixed-root-dragging");dragGhost.classList.add("drag-ghost");
+     dragGhost.querySelectorAll("button").forEach(b=>b.setAttribute("tabindex","-1"));document.body.appendChild(dragGhost);updateGhost(t);
+     document.getElementById("dragTrashZone")?.classList.add("show");
      window.__mixedRootDragging=true;
      window.__suppressMixedClickUntil=Date.now()+800;
      // 既存の作品ドラッグ処理とは排他的にする
@@ -1540,13 +1920,15 @@ document.addEventListener("touchend",()=>{
      return;
    }
    e.preventDefault(); e.stopImmediatePropagation();
+   updateGhost(t);setTrashState(t);
+   if(trashOver){dropFolderId=null;document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));return;}
    const others=visibleItems().filter(x=>x!==drag);
    if(!others.length)return;
 
    // 作品をフォルダ中央へ重ねた時だけ「格納」扱い。
    dropFolderId=null;
    document.querySelectorAll(".folder-item.drag-over").forEach(x=>x.classList.remove("drag-over"));
-   document.querySelectorAll(".folder-icon").forEach(x=>x.textContent="📁");
+   
    if(drag.classList.contains("project-item")){
      const folder=others.find(el=>{
        if(!el.classList.contains("folder-item"))return false;
@@ -1558,7 +1940,7 @@ document.addEventListener("touchend",()=>{
      if(folder){
        dropFolderId=folder.dataset.folderId;
        folder.classList.add("drag-over");
-       const icon=folder.querySelector(".folder-icon");if(icon)icon.textContent="📂";
+       
        return;
      }
    }
@@ -1622,7 +2004,7 @@ setTimeout(()=>{
 /* Full-app UI language layer. User-entered titles, folder names, notes and custom stage names are never translated. */
 const FULL_I18N={
  en:{
- "作品一覧":"Projects","＋ 新しい作品":"+ New Project","＋ フォルダ":"+ Folder","← 戻る":"← Back","名前変更":"Rename","削除":"Delete",
+ "作品一覧":"Projects","プロジェクト":"Projects","＋ 新しい作品":"+ New Project","＋ フォルダ":"+ Folder","← 戻る":"← Back","名前変更":"Rename","削除":"Delete",
  "漫画制作進捗":"Manga Production Tracker","メモ一覧":"Notes","作品名":"Project title","制作ページ数":"Pages","制作ページ":"Pages",
  "創作開始日":"Start date","締切予定日":"Deadline","総合進捗":"Overall Progress","制作進捗":"Overall Progress","工程別進捗":"Progress by Stage","工程表":"Production Table",
  "作業履歴":"Work History","今日":"Today","直近7日":"Last 7 days","1日平均":"Daily average","完成予想":"Estimated Completion",
@@ -1631,27 +2013,24 @@ const FULL_I18N={
  "＋ 工程を追加":"+ Add Stage","キャンセル":"Cancel","保存":"Save","作成":"Create","編集":"Edit","この作品を削除":"Delete Project",
  "新しいフォルダ":"New Folder","フォルダ名":"Folder name","フォルダ名を変更":"Rename Folder","フォルダから戻す":"Move out of folder",
  "付箋":"Page Note","付箋を削除":"Delete Note","閉じる":"Close","すべて":"All","赤":"Red","黄":"Yellow","青":"Blue","緑":"Green","移動":"Go",
- "使い方":"Help","工程マスをタップ":"Tap a stage cell","長押し＋スライド":"Long press + slide","左右にスワイプ":"Swipe left/right",
- "ページ番号をタップ":"Tap a page number","進捗と完成予想":"Progress & forecast","バックアップ":"Backup","マーカー":"Legend",
+ "使い方":"Help","工程マスをタップ":"Tap a stage cell","長押し＋スライド":"Long press + slide",
+ "ページ番号をタップ":"Tap a page number","マーカー":"Legend",
  "💾 バックアップ":"💾 Backup","📂 復元":"📂 Restore","工程":"Stages","工程名":"Stage name","上へ":"Up","下へ":"Down",
- "言語":"Language","アプリ設定":"App Settings","新規作品のデフォルト":"New Project Defaults","設定":"Settings",
+ "言語":"Language","アプリ設定":"App Settings","新規作品のデフォルト":"New Project Defaults","設定":"Settings","Libraryの使い方":"Library Help","作品を作る":"Create a project","フォルダで整理":"Organize with folders","作品を編集":"Edit a project","ゴミ箱":"Trash","バックアップ":"Backup","テーマカラー":"Theme Color","完了セルや選択状態などのアクセントカラーに使われます。":"Used for completed cells and selected states.",
  "全工程":"All stages","締切":"Deadline","ページ":"Pages","未設定":"Not set","完了":"Done","完成工程":"completed stages",
  "データ収集中":"Collecting data","完成！":"Complete!","変更は自動保存されます":"Changes are saved automatically",
  "保存しました ✓":"Saved ✓","該当するメモはありません。":"No matching notes.","（メモ本文なし）":"(No note text)",
  "修正点・忘れたくないことなど":"Corrections, reminders, etc.",
- "工程名の変更・並び替え・追加・削除（最大8工程）":"Rename, reorder, add or delete stages (max 8).",
+ "工程名の変更・並び替え・追加・削除":"Rename, reorder, add or delete stages.",
  "新しい作品を作るときの初期値です。作品ごとに変更できます。":"Initial values for new projects. You can change them for each project.",
  "作品ごとの進捗・付箋・作業履歴は端末内に自動保存されます。":"Project progress, notes and work history are saved automatically on this device.",
  "まだ作品がありません。":"No projects yet.","「＋ 新しい作品」から作成できます。":"Create one with “+ New Project”.",
  "着手=0.5工程として直近7日から算出":"Calculated from the last 7 days, counting in-progress as 0.5 stage.",
  "全作品のページ数・進捗・付箋・作業履歴を1つのJSONに保存します。":"Save all projects, progress, notes and work history in one JSON file.",
  "Chromeのダウンロード一覧または端末の「Downloads」を確認してください。":"Check Chrome downloads or the device Downloads folder.",
- "JSONバックアップには作品・進捗・作業履歴・付箋などのデータを保存します。大きな変更の前にもバックアップしておくと安心です。":"JSON backup stores projects, progress, work history and notes. Back up before major changes.",
  "タップするたびに「未着手 → 着手 → 完了 → 未着手」と切り替わります。":"Each tap cycles: Not started → In progress → Complete → Not started.",
- "工程マスを約0.5秒長押しして、そのまま同じ工程をなぞると、最初のマスの状態を連続コピーできます。振動したらコピー開始です。":"Long-press a stage cell for about 0.5 seconds, then slide along the same stage to copy its state. Copying starts when the device vibrates.",
- "工程表を左右にスワイプすると、12ページずつ移動できます。「前」「次」ボタンでも移動できます。":"Swipe the production table left or right to move 12 pages at a time. You can also use Prev and Next.",
+ "工程マスを約0.5秒長押しし、上下または左右になぞると範囲をプレビューできます。指を離すと確定します。振動したら開始です。":"Long-press a stage cell for about 0.5 seconds, then slide vertically or horizontally to preview the range. Release to apply it. It starts when the device vibrates.",
  "そのページに付箋メモを付けられます。赤・黄・青・緑で分類でき、「メモ一覧」から絞り込みやページ移動もできます。":"Add a note to a page and classify it by red, yellow, blue or green. Filter notes and jump to pages from Notes.",
- "着手率・完成率・工程別進捗を自動集計します。作業履歴から完成予想を計算し、締切を設定している場合は必要ペースも確認できます。":"Automatically summarizes started/completed rates and stage progress. Work history is used to estimate completion and required pace when a deadline is set."
  }};
 const JA_STAGE_DEFAULTS=["ネーム","ペン","背景","トーン","写植"];
 const EN_STAGE_DEFAULTS=["Storyboard","Line Art","Background","Tone","Lettering"];
@@ -1709,7 +2088,7 @@ languageObserver.observe(document.body,{subtree:true,childList:true,characterDat
 const _alert=window.alert.bind(window),_confirm=window.confirm.bind(window);
 window.alert=(msg)=>{
  if(uiLang()==="en"){
-   msg=String(msg).replace("1作品300ページまでです。","Up to 300 pages per project.")
+   msg=String(msg).replace("1作品500ページまでです。","Up to 500 pages per project.")
     .replace("工程は1つ以上必要です。","At least one stage is required.")
     .replace("フォルダ名を入力してください。","Enter a folder name.")
     .replace("❌ このバックアップファイルは読み込めませんでした。","❌ This backup file could not be read.")
@@ -1729,19 +2108,7 @@ window.confirm=(msg)=>{
  return _confirm(msg);
 };
 
-/* On first switch to English only, translate untouched Japanese default stages.
-   Customized defaults are preserved exactly. */
-const _settingsSaveClick=document.getElementById("settingsSave").onclick;
-document.getElementById("settingsSave").onclick=()=>{
- const oldLang=appSettings.language;
- const selected=document.getElementById("appLanguage").value;
- const untouched=defaultStageDraft.length===JA_STAGE_DEFAULTS.length&&defaultStageDraft.every((x,i)=>x===JA_STAGE_DEFAULTS[i]);
- if(oldLang!=="en"&&selected==="en"&&untouched){
-   defaultStageDraft=[...EN_STAGE_DEFAULTS];
- }
- _settingsSaveClick();
- setTimeout(()=>translateDynamicEnglish(document),0);
-};
+/* Legacy settings-save i18n wrapper removed; final settings handler is authoritative. */
 
 /* ---- extracted script block ---- */
 
@@ -1751,7 +2118,7 @@ const I18N_MORE_EN={
  "創作開始日":"Start date","締切予定日":"Deadline","工程設定":"Stage Settings",
  "工程をカスタマイズ":"Customize Stages","工程名":"Stage name",
  "変更しなければ「ネーム・ペン・背景・トーン・写植」で作成されます":"If unchanged, the default stages will be used.",
- "工程名の変更・並び替え・追加・削除（最大8工程）":"Rename, reorder, add or delete stages (max 8).",
+ "工程名の変更・並び替え・追加・削除":"Rename, reorder, add or delete stages.",
  "変更は自動保存されます":"Changes are saved automatically",
  "完成":"Completed","着手":"Started","全工程":"All stages","締切":"Deadline",
  "ページ":"Pages","未設定":"Not set","無題":"Untitled",
@@ -1807,7 +2174,7 @@ function translateUiPatterns(root=document){
    if(x!==s)el.textContent=raw.replace(s,x);
  }
  // title/placeholderなど
- document.title="Manga Production Tracker";
+ document.title="fillio";
  document.querySelectorAll("[placeholder]").forEach(el=>{
    const p=el.getAttribute("placeholder");
    if(p==="作品名")el.setAttribute("placeholder","Project title");
@@ -1824,20 +2191,7 @@ function refreshWholeLanguage(){
  }
 }
 
-// 言語変更時、未カスタマイズのデフォルト工程は言語に合わせる。
-// ユーザーが変更した工程セットは勝手に翻訳しない。
-const settingsSaveBtn=document.getElementById("settingsSave");
-const previousSettingsSave=settingsSaveBtn.onclick;
-settingsSaveBtn.onclick=()=>{
- const before=appSettings.language;
- const selected=document.getElementById("appLanguage").value;
- const jaDefault=defaultStageDraft.length===JA_STAGE_DEFAULTS.length&&defaultStageDraft.every((x,i)=>x===JA_STAGE_DEFAULTS[i]);
- const enDefault=defaultStageDraft.length===EN_STAGE_DEFAULTS.length&&defaultStageDraft.every((x,i)=>x===EN_STAGE_DEFAULTS[i]);
- if(selected==="en"&&jaDefault) defaultStageDraft=[...EN_STAGE_DEFAULTS];
- if(selected==="ja"&&enDefault) defaultStageDraft=[...JA_STAGE_DEFAULTS];
- previousSettingsSave();
- setTimeout(refreshWholeLanguage,0);
-};
+// Legacy settings-save language wrapper removed; final settings handler is authoritative.
 
 // 動的再描画後の翻訳漏れも拾う
 const fullLanguageObserver=new MutationObserver(()=>{
@@ -1867,7 +2221,7 @@ const JA_STATIC_BY_ID={
 };
 function restoreKnownJapaneseUi(){
   Object.entries(JA_STATIC_BY_ID).forEach(([id,txt])=>{const el=document.getElementById(id);if(el)el.textContent=txt});
-  document.title="漫画制作進捗";
+  document.title="fillio";
   document.documentElement.lang="ja";
 }
 function rerenderCurrentViewForLanguage(){
@@ -1899,7 +2253,7 @@ function applyCurrentLanguageNow(){
 function updateLanguageButtons(){
  document.querySelectorAll(".language-option").forEach(b=>b.classList.toggle("active",b.dataset.lang===languageSettings.language));
  const cancel=document.getElementById("languageCancel");
- if(cancel)cancel.textContent=languageSettings.language==="en"?"Close":"閉じる";
+ if(cancel){cancel.textContent="×";cancel.setAttribute("aria-label",languageSettings.language==="en"?"Close":"閉じる");}
 }
 document.getElementById("languageButton").onclick=()=>{
  updateLanguageButtons();
@@ -1908,7 +2262,7 @@ document.getElementById("languageButton").onclick=()=>{
 document.getElementById("languageCancel").onclick=()=>document.getElementById("languageModal").classList.remove("open");
 document.getElementById("languageModal").onclick=e=>{if(e.target.id==="languageModal")e.currentTarget.classList.remove("open")};
 
-document.querySelectorAll(".language-option").forEach(btn=>btn.onclick=()=>{
+function handleLanguageOptionClick(btn){
  const selected=btn.dataset.lang;
  const old=languageSettings.language;
  if(selected===old)return;
@@ -1926,23 +2280,45 @@ document.querySelectorAll(".language-option").forEach(btn=>btn.onclick=()=>{
  persistAppSettings();
  document.getElementById("appLanguage").value=selected;
  updateLanguageButtons();
- // A single reload gives both languages a clean render and avoids legacy
- // runtime translation layers fighting over already-rendered text.
+
+ // Preserve the original order: request the clean reload first, then queue the
+ // same maintenance callbacks that the former wrappers queued afterwards.
  location.reload();
+ setTimeout(refreshSettingsLanguage,0);
+ setTimeout(()=>{
+   translateDefaultStageNames(languageSettings.language);
+   localizeDefaultsSettingsUi();
+   if(document.getElementById("appSettingsModal").classList.contains("open")){
+     defaultStageDraft=[...projectDefaults.stages];
+     renderDefaultStageEditor();
+   }
+   folderRendering=false;
+   if(!currentProjectId){
+     renderProjectList();
+     renderFoldersAndFilter();
+   }
+ },0);
+
+}
+document.querySelectorAll(".language-option").forEach(btn=>{
+ btn.onclick=()=>handleLanguageOptionClick(btn);
 });
 
 /* Settings gear now saves ONLY new-project defaults. Language is untouched. */
 document.getElementById("appSettingsButton").onclick=()=>{
+ refreshSettingsLanguage();
  document.getElementById("defaultStartPage").value=projectDefaults.startPage;
  document.getElementById("defaultEndPage").value=projectDefaults.endPage;
  defaultStageDraft=[...projectDefaults.stages];
  renderDefaultStageEditor();
+ localizeDefaultsSettingsUi();
+ lockPageScroll();
  document.getElementById("appSettingsModal").classList.add("open");
 };
 document.getElementById("settingsSave").onclick=()=>{
- let a=Math.max(1,Math.min(999,Number(document.getElementById("defaultStartPage").value)||1));
- let b=Math.max(a,Math.min(999,Number(document.getElementById("defaultEndPage").value)||a));
- if(b-a+1>300){alert(uiLang()==="en"?"Up to 300 pages per project.":"1作品300ページまでです。");return}
+ let a=Math.max(1,Math.min(500,Number(document.getElementById("defaultStartPage").value)||1));
+ let b=Math.max(a,Math.min(500,Number(document.getElementById("defaultEndPage").value)||a));
+ if(b-a+1>500){alert(uiLang()==="en"?"Up to 500 pages per project.":"1作品500ページまでです。");return}
  const ss=defaultStageDraft.map(x=>String(x||"").trim()).filter(Boolean);
  if(!ss.length)return;
  appSettings=normalizeAppSettings({
@@ -1953,10 +2329,31 @@ document.getElementById("settingsSave").onclick=()=>{
  });
  persistAppSettings();
  document.getElementById("appSettingsModal").classList.remove("open");
+ unlockPageScroll();
  applyCurrentLanguageNow();
 };
 document.getElementById("appLanguage").value=languageSettings.language;
 updateLanguageButtons();
+
+/* Reset ONLY the stage list used as defaults for newly-created projects.
+   Existing projects and their progress are never touched. */
+const defaultStageReset=document.getElementById("defaultStageReset");
+if(defaultStageReset){
+ const updateDefaultStageResetLabel=()=>{
+   defaultStageReset.textContent=languageSettings.language==="en"?"Reset Stages":"工程を初期設定に戻す";
+ };
+ updateDefaultStageResetLabel();
+ defaultStageReset.onclick=()=>{
+   const en=languageSettings.language==="en";
+   const ok=confirm(en
+     ?"Reset the default stages for new projects?\nExisting projects will not be affected."
+     :"新規作品用の工程を初期設定に戻しますか？\n既存の作品には影響しません。");
+   if(!ok)return;
+   defaultStageDraft=[...(en?EN_STAGE_DEFAULTS:JA_STAGE_DEFAULTS)];
+   renderDefaultStageEditor();
+ };
+}
+
 
 /* ---- extracted script block ---- */
 
@@ -1969,6 +2366,7 @@ function localizeDefaultsSettingsUi(){
  set("settingsPagesLabel","制作ページ","Pages");
  set("settingsStagesLabel","工程","Stages");
  set("defaultStageAdd","＋ 工程を追加","+ Add Stage");
+ set("defaultStageReset","工程を初期設定に戻す","Reset Stages");
  set("settingsNote","新しい作品を作るときの初期値です。作品ごとに変更できます。","These initial values are used when creating a new project. You can change them per project.");
  set("settingsCancel","キャンセル","Cancel");
  set("settingsSave","保存","Save");
@@ -1996,19 +2394,6 @@ function refreshSettingsLanguage(){
    renderDefaultStageEditor();
  }
 }
-document.querySelectorAll(".language-option").forEach(btn=>{
- const old=btn.onclick;
- btn.onclick=(e)=>{
-   old.call(btn,e);
-   setTimeout(refreshSettingsLanguage,0);
- };
-});
-const oldSettingsOpen=document.getElementById("appSettingsButton").onclick;
-document.getElementById("appSettingsButton").onclick=(e)=>{
- refreshSettingsLanguage();
- oldSettingsOpen.call(document.getElementById("appSettingsButton"),e);
- localizeDefaultsSettingsUi();
-};
 setTimeout(()=>{syncStockDefaultsToLanguage();localizeDefaultsSettingsUi()},0);
 
 /* ---- extracted script block ---- */
@@ -2050,27 +2435,7 @@ function translateDefaultStageNames(targetLang){
    persistAppSettings();
  }
 }
-document.querySelectorAll(".language-option").forEach(btn=>{
- const previous=btn.onclick;
- btn.onclick=(e)=>{
-   previous.call(btn,e);
-   // previous handler persists the selected language first
-   setTimeout(()=>{
-     translateDefaultStageNames(languageSettings.language);
-     localizeDefaultsSettingsUi();
-     if(document.getElementById("appSettingsModal").classList.contains("open")){
-       defaultStageDraft=[...projectDefaults.stages];
-       renderDefaultStageEditor();
-     }
-     // Always perform a complete folder render after language changes.
-     folderRendering=false;
-     if(!currentProjectId){
-       renderProjectList();
-       renderFoldersAndFilter();
-     }
-   },0);
- };
-});
+/* Language option maintenance is consolidated in handleLanguageOptionClick(). */
 
 /* After startup/reload, force one final folder-aware render after all language
    initialization has finished. This does not change folderId data. */
@@ -2135,7 +2500,7 @@ try{ fullLanguageObserver.disconnect(); }catch(e){}
 
 const CLEAN_EN_EXACT = {
  "全体":"OVERALL",
- "作品一覧":"Projects","メモ一覧":"Notes","総合進捗":"Overall Progress","制作進捗":"Overall Progress",
+ "作品一覧":"Projects","プロジェクト":"Projects","メモ一覧":"Notes","総合進捗":"Overall Progress","制作進捗":"Overall Progress",
  "制作中":"In progress","完成率":"Completion","工程別進捗":"Progress by Stage","工程表":"Production Table",
  "作業履歴":"Work History","今日":"Today","直近7日":"Last 7 days","直近7日間":"Last 7 days",
  "1日平均":"Daily average","完成予想":"Estimated Completion","変更は自動保存されます":"Changes are saved automatically",
@@ -2154,7 +2519,7 @@ const CLEAN_USER_TEXT_SELECTOR = [
 function cleanEnglishPass(root=document){
  if(languageSettings?.language!=="en")return;
  document.documentElement.lang="en";
- document.title="Manga Production Tracker";
+ document.title="fillio";
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
  const nodes=[]; while(walker.nextNode())nodes.push(walker.currentNode);
  for(const n of nodes){
@@ -2199,7 +2564,7 @@ if(languageSettings?.language==="en"){
  setTimeout(()=>cleanEnglishPass(document),80);
 }else{
  document.documentElement.lang="ja";
- document.title="漫画制作進捗";
+ document.title="fillio";
 }
 
 document.querySelectorAll(".language-option").forEach(btn=>{
@@ -2220,3 +2585,235 @@ document.querySelectorAll(".language-option").forEach(btn=>{
  };
 });
 /* ===== /I18N CLEAN AUTHORITY ===== */
+
+
+/* ---- Modal/list i18n consistency patch ---- */
+function localizeOpenUi(){
+ const en=uiLang()==="en";
+ const set=(sel,ja,enText)=>{const el=document.querySelector(sel);if(el)el.textContent=en?enText:ja};
+ const ph=(sel,ja,enText)=>{const el=document.querySelector(sel);if(el)el.placeholder=en?enText:ja};
+ set("#memoListModal .memo-head h2","メモ一覧","Notes");
+ {const el=document.querySelector("#closeMemoList");if(el){el.textContent="×";el.setAttribute("aria-label",en?"Close":"閉じる");}}
+ const filters=[["all","すべて","All"],["#f4a6a6","赤","Red"],["#f4dc8a","黄","Yellow"],["#9ec8f4","青","Blue"],["#a9ddb0","緑","Green"]];
+ filters.forEach(([key,ja,enText])=>{const el=document.querySelector(`.memo-filter[data-filter="${key}"]`);if(el)el.textContent=en?enText:ja});
+ ph("#stickyText","修正点・忘れたくないことなど","Corrections, reminders, etc.");
+ ph("#stickyTodoInput","チェック項目を追加","Add checklist item");
+ set("#stickyDelete","付箋を削除","Delete Note");
+ set("#stickySave","保存","Save");
+ // fixed UI in any currently open JS modal is normalized on every call.
+ document.querySelectorAll('.project-modal.open,.folder-modal.open,.memo-modal.open,.sticky-modal.open').forEach(root=>{
+   if(en){translateExactText(root);translateUiPatterns(root)}
+ });
+}
+const _openStickyI18n=openSticky;
+openSticky=function(page){_openStickyI18n(page);localizeOpenUi();};
+const _renderMemoListI18n=renderMemoList;
+renderMemoList=function(){_renderMemoListI18n();localizeOpenUi();};
+const _applyCurrentLanguageNowI18n=applyCurrentLanguageNow;
+applyCurrentLanguageNow=function(){_applyCurrentLanguageNowI18n();localizeOpenUi();};
+setTimeout(localizeOpenUi,0);
+
+
+/* ===== Dynamic UI i18n audit patch 2026-09-23 =====
+   Covers UI created/re-rendered by JavaScript. User-authored text is never translated. */
+const DYNAMIC_UI_EN={
+  "ページ":"Pages","完成":"Completed","全工程":"All stages","編集":"Edit","この作品を削除":"Delete this project",
+  "フォルダから戻す":"Move out of folder","移動":"Go","付箋を削除":"Delete Note","保存":"Save","閉じる":"Close",
+  "すべて":"All","赤":"Red","黄":"Yellow","青":"Blue","緑":"Green","今日":"Today",
+  "全工程完了":"All stages complete","データ収集中":"Collecting data","完成！":"Complete!"
+};
+function auditDynamicUiLanguage(root=document){
+  if(uiLang()!=="en")return;
+  const scope=root?.querySelectorAll?root:document;
+  const all=(root===document?[...document.querySelectorAll("*")]:[root,...root.querySelectorAll("*")]);
+  for(const el of all){
+    if(!el || el.matches?.("script,style,input,textarea,option") || el.closest?.("[data-user-text],.memo-text,.sticky-todo-item span,.memo-todo-item span"))continue;
+    if(el.children.length===0){
+      const raw=el.textContent||"", t=raw.trim();
+      let x=DYNAMIC_UI_EN[t]||FULL_I18N?.en?.[t]||t;
+      x=x.replace(/^まだ作品がありません。$/,"No projects yet.")
+         .replace(/^「＋ 新しい作品」から作成できます。$/,"Create one with “+ New Project”.")
+         .replace(/^全(\d+)P$/,"$1 pages")
+         .replace(/^(\d+)P\s*\/\s*(\d+)P$/,"$1 / $2 pages")
+         .replace(/^(\d+)作品$/,"$1 projects")
+         .replace(/^あと約(\d+)日$/,"About $1 days")
+         .replace(/^完成予想は締切より\s*(\d+)日早いペース$/,"Forecast is $1 days before deadline")
+         .replace(/^完成予想は締切より\s*(\d+)日超過するペース$/,"Forecast is $1 days after deadline")
+         .replace(/^完成予想は締切予定日と同日$/,"Forecast matches the deadline")
+         .replace(/^必要ペース\s*1日([\d.]+)工程$/,"Required pace: $1 stages/day");
+      if(x!==t)el.textContent=raw.replace(t,x);
+    }
+  }
+  // Dynamic controls inside memo list are intentionally outside the generic text pass
+  // because memo bodies are user-authored.
+  document.querySelectorAll('#memoList .memo-jump,[data-action="memo-jump"]').forEach(el=>{el.textContent="Go"});
+  // Project cards are frequently rebuilt wholesale.
+  document.querySelectorAll('.project-item').forEach(card=>{
+    const rows=card.querySelectorAll('.project-meta-row span');
+    rows.forEach(el=>{const t=el.textContent.trim(); if(DYNAMIC_UI_EN[t])el.textContent=DYNAMIC_UI_EN[t]});
+    const edit=card.querySelector('.project-edit-button');if(edit)edit.textContent="Edit";
+    const del=card.querySelector('.project-delete-button');if(del)del.textContent="Delete this project";
+  });
+  localizeOpenUi?.();
+}
+let dynamicAuditTimer=0;
+const dynamicAuditObserver=new MutationObserver(muts=>{
+  if(uiLang()!=="en")return;
+  clearTimeout(dynamicAuditTimer);
+  dynamicAuditTimer=setTimeout(()=>auditDynamicUiLanguage(document),0);
+});
+if(uiLang()==="en")dynamicAuditObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
+setTimeout(()=>auditDynamicUiLanguage(document),0);
+/* ===== /Dynamic UI i18n audit patch ===== */
+
+
+/* --- Home design prototype: soft trash + monochrome controls --- */
+(function setupSoftTrashPrototype(){
+  const zone=document.getElementById("dragTrashZone");
+  const modal=document.getElementById("trashModal");
+  const list=document.getElementById("trashList");
+  const open=document.getElementById("trashOpen");
+  const close=document.getElementById("trashClose");
+  const empty=document.getElementById("trashEmpty");
+  if(!zone||!modal||!list||!open||!close||!empty)return;
+  const isEn=()=>languageSettings?.language==="en";
+  function renderTrash(){
+    list.innerHTML="";
+    const folderEntries=Object.entries(projectStore.folders||{}).filter(([,f])=>f?.trashedAt);
+    const entries=Object.entries(projectStore.projects||{}).filter(([,p])=>p?.trashedAt);
+    if(!entries.length&&!folderEntries.length){list.innerHTML=`<div class="trash-empty">${isEn()?"Trash is empty.":"ゴミ箱は空です。"}</div>`;return;}
+    folderEntries.sort((a,b)=>(b[1].trashedAt||0)-(a[1].trashedAt||0)).forEach(([id,f])=>{
+      const row=document.createElement("div");row.className="trash-item";
+      row.innerHTML=`<div class="trash-item-name" data-user-text="1"></div><div class="trash-item-actions"><button type="button" data-act="restore">${isEn()?"Restore":"元に戻す"}</button><button type="button" class="danger" data-act="delete">${isEn()?"Delete":"完全削除"}</button></div>`;
+      row.querySelector(".trash-item-name").textContent=(isEn()?"Folder: ":"フォルダ：")+(f.name||"");
+      row.querySelector('[data-act="restore"]').onclick=()=>{delete f.trashedAt;if(!projectStore.rootOrder.includes("f:"+id))projectStore.rootOrder.unshift("f:"+id);persistProjectStore();renderProjectList();renderFoldersAndFilter();renderTrash()};
+      row.querySelector('[data-act="delete"]').onclick=()=>{if(!confirm(isEn()?`Permanently delete folder “${f.name}” and all projects inside? This cannot be undone.`:`フォルダ「${f.name}」と中の作品を完全に削除しますか？\nこの操作は元に戻せません。`))return;const childIds=Object.keys(projectStore.projects||{}).filter(pid=>projectStore.projects[pid]?.folderId===id);childIds.forEach(pid=>delete projectStore.projects[pid]);projectStore.projectOrder=(projectStore.projectOrder||[]).filter(pid=>!childIds.includes(pid));projectStore.rootOrder=(projectStore.rootOrder||[]).filter(k=>k!=="f:"+id&&!childIds.some(pid=>k==="p:"+pid));delete projectStore.folders[id];persistProjectStore();renderTrash();renderProjectList();renderFoldersAndFilter()};
+      list.appendChild(row);
+    });
+    entries.sort((a,b)=>(b[1].trashedAt||0)-(a[1].trashedAt||0)).forEach(([id,p])=>{
+      const row=document.createElement("div");row.className="trash-item";
+      row.innerHTML=`<div class="trash-item-name" data-user-text="1"></div><div class="trash-item-actions"><button type="button" data-act="restore">${isEn()?"Restore":"元に戻す"}</button><button type="button" class="danger" data-act="delete">${isEn()?"Delete":"完全削除"}</button></div>`;
+      row.querySelector(".trash-item-name").textContent=p.title||(isEn()?"Untitled":"無題");
+      row.querySelector('[data-act="restore"]').onclick=()=>{delete p.trashedAt;p.folderId=null;persistProjectStore();renderProjectList();renderFoldersAndFilter();renderTrash()};
+      row.querySelector('[data-act="delete"]').onclick=()=>{const name=p.title||(isEn()?"Untitled":"無題");if(!confirm(isEn()?`Permanently delete “${name}”? This cannot be undone.`:`「${name}」を完全に削除しますか？\nこの操作は元に戻せません。`))return;delete projectStore.projects[id];projectStore.projectOrder=(projectStore.projectOrder||[]).filter(x=>x!==id);projectStore.rootOrder=(projectStore.rootOrder||[]).filter(x=>x!=="p:"+id);if(projectStore.activeProjectId===id)projectStore.activeProjectId=null;persistProjectStore();renderTrash();renderProjectList();renderFoldersAndFilter()};
+      list.appendChild(row);
+    });
+  }
+  empty.onclick=()=>{
+    const folderIds=Object.keys(projectStore.folders||{}).filter(id=>projectStore.folders[id]?.trashedAt);
+    const projectIds=Object.keys(projectStore.projects||{}).filter(id=>projectStore.projects[id]?.trashedAt);
+    if(!folderIds.length&&!projectIds.length)return;
+    if(!confirm(isEn()?"Permanently delete everything in Trash? This cannot be undone.":"ゴミ箱の中身をすべて完全に削除しますか？\nこの操作は元に戻せません。"))return;
+    const childIds=new Set();
+    folderIds.forEach(fid=>Object.keys(projectStore.projects||{}).forEach(pid=>{if(projectStore.projects[pid]?.folderId===fid)childIds.add(pid)}));
+    const allProjectIds=new Set([...projectIds,...childIds]);
+    allProjectIds.forEach(id=>delete projectStore.projects[id]);
+    folderIds.forEach(id=>delete projectStore.folders[id]);
+    projectStore.projectOrder=(projectStore.projectOrder||[]).filter(id=>!allProjectIds.has(id));
+    projectStore.rootOrder=(projectStore.rootOrder||[]).filter(k=>!folderIds.some(id=>k==="f:"+id)&&!allProjectIds.has(k.slice(2)));
+    if(allProjectIds.has(projectStore.activeProjectId))projectStore.activeProjectId=null;
+    persistProjectStore();renderTrash();renderProjectList();renderFoldersAndFilter();
+  };
+  open.onclick=()=>{renderTrash();modal.classList.add("open");lockPageScroll()};
+  close.onclick=()=>{modal.classList.remove("open");unlockPageScroll()};
+  modal.addEventListener("click",e=>{if(e.target===modal)close.click()});
+  function setZoneText(){document.getElementById("trashTitle").textContent=isEn()?"Trash":"ゴミ箱";document.getElementById("dragTrashLabel").textContent=isEn()?"Hold to move to Trash":"長押しでゴミ箱へ";open.querySelector("span").textContent=isEn()?"Trash":"ゴミ箱";empty.textContent=isEn()?"Empty Trash":"空にする";close.textContent="×";close.setAttribute("aria-label",isEn()?"Close":"閉じる")}
+  setZoneText();
+  const langObserver=new MutationObserver(setZoneText);langObserver.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
+
+  // Existing long-press drag remains the source of truth. This layer only exposes a trash drop target.
+  document.addEventListener("touchmove",e=>{
+    const active=(typeof reorderDragging!=="undefined"&&reorderDragging) && !window.__mixedRootDragging;
+    if(!active||e.touches.length!==1){zone.classList.remove("show","over");return;}
+    zone.classList.add("show");
+    const t=e.touches[0],r=zone.getBoundingClientRect();
+    zone.classList.toggle("over",t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top-12&&t.clientY<=r.bottom+12);
+  },{passive:true});
+  document.addEventListener("touchend",()=>{
+    const over=zone.classList.contains("over");
+    let el=null;
+    if(window.__mixedRootDragging){el=document.querySelector(".project-item.mixed-root-dragging[data-project-id]")}
+    if(!el&&typeof reorderDragging!=="undefined"&&reorderDragging?.dataset?.projectId)el=reorderDragging;
+    if(over&&el?.dataset?.projectId){
+      const id=el.dataset.projectId,p=projectStore.projects[id];
+      if(p){p.trashedAt=Date.now();p.folderId=null;projectStore.rootOrder=(projectStore.rootOrder||[]).filter(k=>k!=="p:"+id);persistProjectStore();setTimeout(()=>{renderProjectList();renderFoldersAndFilter()},0)}
+    }
+    zone.classList.remove("show","over");
+  },{capture:true,passive:true});
+  document.addEventListener("touchcancel",()=>zone.classList.remove("show","over"),{passive:true});
+})();
+
+/* ===== Home controls v2: unified create menu ===== */
+(function setupUnifiedCreateMenu(){
+ const toggle=document.getElementById("createMenuButton");
+ const menu=document.getElementById("createMenu");
+ const projectBtn=document.getElementById("newProjectButton");
+ const folderBtn=document.getElementById("folderAdd");
+ const trashBtn=document.getElementById("trashOpen");
+ if(!toggle||!menu||!projectBtn||!folderBtn)return;
+ const isEn=()=>languageSettings?.language==="en";
+ const closeMenu=()=>{menu.classList.remove("open");toggle.setAttribute("aria-expanded","false")};
+ const syncLabels=()=>{
+   toggle.setAttribute("aria-label",isEn()?"Create":"作成");
+   trashBtn?.setAttribute("aria-label",isEn()?"Trash":"ゴミ箱");
+   const p=projectBtn.querySelector("span"),f=folderBtn.querySelector("span");
+   if(p)p.textContent=isEn()?"New Project":"新しい作品";
+   if(f)f.textContent=isEn()?"New Folder":"新しいフォルダ";
+   // One-level folder model: creating another folder while inside one is not available.
+   folderBtn.style.display=(typeof currentFolderId!=="undefined"&&currentFolderId)?"none":"flex";
+ };
+ toggle.addEventListener("click",e=>{e.stopPropagation();syncLabels();const open=!menu.classList.contains("open");menu.classList.toggle("open",open);toggle.setAttribute("aria-expanded",String(open))});
+ menu.addEventListener("click",e=>e.stopPropagation());
+ projectBtn.addEventListener("click",closeMenu);
+ folderBtn.addEventListener("click",closeMenu);
+ document.addEventListener("click",closeMenu);
+ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
+ const mo=new MutationObserver(syncLabels);mo.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
+ syncLabels();
+})();
+/* ===== /Home controls v2 ===== */
+
+
+/* ===== 2026-09-23 robust help/theme/i18n patch ===== */
+(function fillioUiFixes(){
+  const $=id=>document.getElementById(id);
+  function isEn(){return languageSettings?.language==="en"}
+
+  function syncExtraLanguage(){
+    const en=isEn();
+    const text=(id,ja,enText)=>{const el=$(id);if(el)el.textContent=en?enText:ja};
+    text("themeColorTitle","テーマカラー","Theme Color");
+    text("themeColorNote","完了セルや選択状態などのアクセントカラーに使われます。","Used as the accent color for completed cells and selected states.");
+    text("dataManagementTitle","データ管理","Data Management");
+    text("dataManagementNote","全作品・フォルダ・進捗・付箋・作業履歴を1つのJSONに保存します。","Save all projects, folders, progress, notes, and work history in one JSON file.");
+    text("exportBackup","💾 バックアップ","💾 Backup");
+    text("importBackup","📂 復元","📂 Restore");
+    const hp=$("libraryHelpTitle");if(hp)hp.textContent=en?"Using Library":"Libraryの使い方";
+    const hb=$("libraryHelpButton");if(hb)hb.setAttribute("aria-label",en?"Library Help":"Libraryの使い方");
+    const hc=$("libraryHelpClose");if(hc)hc.setAttribute("aria-label",en?"Close":"閉じる");
+    const items=$("libraryHelpModal")?.querySelectorAll(".help-item");
+    const ja=[["プロジェクトを作る","右上の「＋」から新しいプロジェクトを作成します。制作ページや工程はプロジェクトごとに設定できます。"],["タップして開く","項目をタップすると、プロジェクトは入力ページ、フォルダはフォルダ内を開きます。"],["長押しで整理","プロジェクトやフォルダを長押しすると、並び替え・フォルダ移動・ゴミ箱への移動ができます。"],["フォルダで整理","「＋」からフォルダを作成できます。プロジェクトをフォルダにまとめて整理できます。"],["プロジェクトを編集","プロジェクトカードの「編集」からプロジェクト名・ページ・日付・工程を変更できます。"],["ゴミ箱","削除したプロジェクトやフォルダはゴミ箱へ移動します。必要なら復元できます。"],["バックアップ","設定の「データ管理」から、Library全体をJSONファイルにバックアップ・復元できます。"]];
+    const ee=[["Create a project","Use the + button at the top right to create a project. Pages and stages can be set for each project."],["Tap to open","Tap an item to open a project's input page or enter a folder."],["Press and hold to organize","Press and hold a project or folder to reorder it, move it to a folder, or move it to Trash."],["Organize with folders","Create folders from the + button and organize projects inside them."],["Edit a project","Use Edit on a project card to change its name, pages, dates, and stages."],["Trash","Deleted projects and folders move to Trash and can be restored when needed."],["Backup","Use Data Management in Settings to back up or restore the entire Library as a JSON file."]];
+    items?.forEach((it,i)=>{const a=(en?ee:ja)[i];if(!a)return;it.querySelector(".help-item-title").textContent=a[0];it.querySelector(".help-item-text").textContent=a[1]});
+    document.querySelectorAll(".theme-color-option").forEach(btn=>{const label=en?btn.dataset.en:btn.dataset.ja;btn.setAttribute("aria-label",label);btn.title=label;btn.querySelector(".theme-option-label").textContent=label});
+  }
+
+  const helpBtn=$("libraryHelpButton"), helpModal=$("libraryHelpModal"), helpClose=$("libraryHelpClose");
+  const openHelp=()=>{if(!helpModal)return;lockPageScroll();helpModal.classList.add("open");helpModal.setAttribute("aria-hidden","false")};
+  const closeHelp=()=>{if(!helpModal)return;helpModal.classList.remove("open");helpModal.setAttribute("aria-hidden","true");unlockPageScroll()};
+  helpBtn?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openHelp()},{capture:true});
+  helpClose?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();closeHelp()},{capture:true});
+
+  document.querySelectorAll(".theme-color-option").forEach(btn=>btn.addEventListener("click",e=>{
+    e.preventDefault();
+    const color=btn.dataset.themeColor;
+    appSettings.themeColor=color;
+    applyThemeColor(color);
+    persistAppSettings();
+  },{capture:true}));
+
+  const langSelect=$("appLanguage");
+  langSelect?.addEventListener("change",()=>{languageSettings.language=langSelect.value==="en"?"en":"ja";syncExtraLanguage()});
+  new MutationObserver(syncExtraLanguage).observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
+  syncExtraLanguage();
+})();
